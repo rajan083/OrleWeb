@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Personalised recommendations{% endblock %}
+
+{% block content %}
+<div class="onboarding">
+    <h1>Personalised<br>recommendations</h1>
+    <p class="onboarding-sub">Provide only the information you feel comfortable sharing. You can change these from profile settings later.</p>
+
+    {% if error %}
+        <p class="form-error">{{ error }}</p>
+    {% endif %}
+
+    <form action="{{ url_for('onboarding') }}" method="POST">
+
+        <h2>Select your age group</h2>
+        <div class="option-list">
+            <label class="option-row">
+                <input type="radio" name="age_group" value="18-25" required> 18 - 25
+            </label>
+            <label class="option-row">
+                <input type="radio" name="age_group" value="26-34"> 26 - 34
+            </label>
+            <label class="option-row">
+                <input type="radio" name="age_group" value="35-43"> 35 - 43
+            </label>
+            <label class="option-row">
+                <input type="radio" name="age_group" value="44-52"> 44 - 52
+            </label>
+            <label class="option-row">
+                <input type="radio" name="age_group" value="53-60"> 53 - 60
+            </label>
+            <label class="option-row">
+                <input type="radio" name="age_group" value="60+"> older
+            </label>
+        </div>
+
+        <h2>Select your height range</h2>
+        <div class="option-list">
+            <label class="option-row">
+                <input type="radio" name="height_range" value="122-152" required> 122 - 152 cm (4 - 5 ft.)
+            </label>
+            <label class="option-row">
+                <input type="radio" name="height_range" value="153-182"> 153 - 182 cm (5 - 6 ft.)
+            </label>
+            <label class="option-row">
+                <input type="radio" name="height_range" value="183-213"> 183 - 213 cm (6 - 7 ft.)
+            </label>
+            <label class="option-row">
+                <input type="radio" name="height_range" value="213+"> Above 213 cm
+            </label>
+        </div>
+
+        <h2>What is your body type?</h2>
+        <div class="body-type-grid">
+            <label class="body-type-card">
+                <input type="radio" name="body_type" value="slim" required>
+                <img src="{{ url_for('static', filename='img/body-slim.svg') }}" alt="Slim">
+                <span>Slim</span>
+            </label>
+            <label class="body-type-card">
+                <input type="radio" name="body_type" value="athletic">
+                <img src="{{ url_for('static', filename='img/body-athletic.svg') }}" alt="Athletic">
+                <span>Athletic</span>
+            </label>
+            <label class="body-type-card">
+                <input type="radio" name="body_type" value="average">
+                <img src="{{ url_for('static', filename='img/body-average.svg') }}" alt="Average">
+                <span>Average</span>
+            </label>
+            <label class="body-type-card">
+                <input type="radio" name="body_type" value="broad">
+                <img src="{{ url_for('static', filename='img/body-broad.svg') }}" alt="Broad">
+                <span>Broad</span>
+            </label>
+        </div>
+
+        <h2>What's your skin tone?</h2>
+        <div class="option-list">
+            <label class="option-row swatch-row">
+                <input type="radio" name="skin_tone" value="fair" required>
+                <span class="swatch" style="background:#F3DECB;"></span> Fair
+            </label>
+            <label class="option-row swatch-row">
+                <input type="radio" name="skin_tone" value="light">
+                <span class="swatch" style="background:#E8B98F;"></span> Light
+            </label>
+            <label class="option-row swatch-row">
+                <input type="radio" name="skin_tone" value="medium">
+                <span class="swatch" style="background:#B4834A;"></span> Medium
+            </label>
+            <label class="option-row swatch-row">
+                <input type="radio" name="skin_tone" value="tan">
+                <span class="swatch" style="background:#8A5A32;"></span> Tan
+            </label>
+            <label class="option-row swatch-row">
+                <input type="radio" name="skin_tone" value="deep">
+                <span class="swatch" style="background:#4A3225;"></span> Deep
+            </label>
+        </div>
+
+        <h2>You want clothes for...?</h2>
+        <div class="option-list">
+            <label class="option-row"><input type="radio" name="occasion" value="any" required> Any occasion</label>
+            <label class="option-row"><input type="radio" name="occasion" value="home"> Home</label>
+            <label class="option-row"><input type="radio" name="occasion" value="wedding"> Wedding ceremony</label>
+            <label class="option-row"><input type="radio" name="occasion" value="date"> Date</label>
+            <label class="option-row"><input type="radio" name="occasion" value="party"> Party</label>
+            <label class="option-row"><input type="radio" name="occasion" value="business"> Business</label>
+            <label class="option-row"><input type="radio" name="occasion" value="travel"> Trip and travel</label>
+            <label class="option-row"><input type="radio" name="occasion" value="workout"> Workout</label>
+            <label class="option-row"><input type="radio" name="occasion" value="festival"> Festival</label>
+            <label class="option-row"><input type="radio" name="occasion" value="beach"> Beach</label>
+        </div>
+
+        <button type="submit" class="btn-save">Save and proceed</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Delete account{% endblock %}
+
+{% block content %}
+<div class="form-wrapper">
+    <div class="form-card">
+        <h1>Delete your account</h1>
+        <p class="onboarding-sub">This permanently deletes your account and style profile. This can't be undone.</p>
+
+        {% if error %}
+            <p class="form-error">{{ error }}</p>
+        {% endif %}
+
+        <form action="{{ url_for('delete_account') }}" method="POST">
+            {% if current_user.password_hash %}
+                <div class="field">
+                    <label for="password">Confirm your password</label>
+                    <input type="password" id="password" name="password" placeholder="•••••••••" required>
+                </div>
+            {% else %}
+                <p class="onboarding-sub">Your account is linked to Google — click below to confirm deletion.</p>
+            {% endif %}
+
+            <button type="submit" class="btn-save" style="background: var(--oxblood, #7A2331);" onclick="return confirm('Are you absolutely sure? This cannot be undone.');">
+                Delete my account permanently
+            </button>
+        </form>
+
+        <a href="{{ url_for('profile') }}">Cancel, go back</a>
+    </div>
+</div>
+{% endblock %}

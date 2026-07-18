@@ -1,0 +1,229 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: ';
+}
+
+.questrial-regular {
+  font-family: "Questrial", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+body {
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.flash-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 16px;
+    pointer-events: none;
+}
+
+.flash-message {
+    padding: 13px 18px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    animation: flash-in 0.3s ease forwards;
+}
+
+.flash-message.flash-hide {
+    animation: flash-out 0.4s ease forwards;
+}
+
+@keyframes flash-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-12px); }
+}
+
+.flash-success {
+    background: #eafaf0;
+    color: #1e7e42;
+    border-left: 3px solid #1e7e42;
+}
+
+.flash-error {
+    background: #fdecea;
+    color: #b3261e;
+    border-left: 3px solid #b3261e;
+}
+
+.flash-info {
+    background: #eef3fb;
+    color: #2a4d8f;
+    border-left: 3px solid #2a4d8f;
+}
+
+form {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+input {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #333;
+}
+
+button {
+    padding: 12px;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #333;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.onboarding {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 30px 20px 60px;
+}
+
+.onboarding h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 10px;
+}
+
+.onboarding-sub {
+    font-size: 13.5px;
+    color: #777;
+    margin-bottom: 30px;
+}
+
+.onboarding h2 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin: 34px 0 6px;
+}
+
+.option-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14.5px;
+    cursor: pointer;
+}
+
+.option-row input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #1a1a1a;
+}
+
+.swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.body-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.body-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: center;
+}
+
+.body-type-card input[type="radio"] {
+    accent-color: #1a1a1a;
+}
+
+.body-type-card img {
+    width: 100%;
+    height: 90px;
+    object-fit: contain;
+}
+
+.btn-save {
+    width: 100%;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    padding: 16px;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    margin-top: 40px;
+    cursor: pointer;
+}
+
+.form-error {
+    background: #fdecea;
+    color: #b3261e;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    margin-bottom: 20px;
+}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/styles.css">
+    <title>OLRE</title>
+</head>
+<body>
+    
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-container" id="flash-container">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}
+    {% endblock %}
+
+    <script>
+      document.querySelectorAll('.flash-message').forEach(function (el) {
+        var msgLength = el.textContent.trim().length;
+        // Base 3s, +25ms per character, capped between 3s and 5s
+        var duration = Math.min(5000, Math.max(3000, 3000 + msgLength * 25));
+
+        setTimeout(function () {
+          el.classList.add('flash-hide');
+          setTimeout(function () {
+            el.remove();
+          }, 400); // matches the fade-out transition below
+        }, duration);
+
+        el.addEventListener('click', function () {
+          el.classList.add('flash-hide');
+          setTimeout(function () { el.remove(); }, 400);
+        });
+      });
+    </script>
+</body>
+</html>
