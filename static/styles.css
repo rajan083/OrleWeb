@@ -69,11 +69,92 @@ nav {
     border-bottom-color: var(--tan);
 }
 
-@media (max-width: 900px) {
-    nav { padding: 16px 20px; }
-    .nav-links { display: none; }
+nav{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 48px;
+    background:var(--cream);
+    border-bottom:1px solid var(--light-grey);
+    position:sticky;
+    top:0;
+    z-index:1000;
 }
 
+.nav-container{
+    display:flex;
+    align-items:center;
+    gap:60px;
+}
+
+.nav-links,.nav-icons{
+    display:flex;
+    align-items:center;
+    gap:28px;
+}
+
+.menu-toggle{
+    display:none;
+    background:none;
+    border:none;
+    color:var(--charcoal);
+    font-size:28px;
+    cursor:pointer;
+    padding:0;
+}
+
+@media (max-width:900px){
+
+nav{
+    padding:18px 20px;
+    position:relative;
+}
+
+.menu-toggle{
+    display:block;
+}
+
+.nav-container{
+    display:none;
+    position:absolute;
+    top:100%;
+    left:0;
+    width:100%;
+    background:white;
+    border-top:1px solid var(--light-grey);
+    box-shadow:0 12px 30px rgba(0,0,0,.08);
+    flex-direction:column;
+    align-items:flex-start;
+    gap:0;
+}
+
+.nav-container.active{
+    display:flex;
+}
+
+.nav-links,.nav-icons{
+    width:100%;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:0;
+}
+
+.nav-links{
+    border-bottom:1px solid var(--light-grey);
+}
+
+.nav-links a, .nav-icons a{
+    width:100%;
+    padding:18px 24px;
+    border-bottom:1px solid rgba(0,0,0,.05);
+    font-size:14px;
+}
+
+.nav-links a:hover .nav-icons a:hover{
+    background:#f7f7f7;
+}
+}
 
 
 /* ============ FORMS (login/register/reset) ============ */
@@ -147,7 +228,7 @@ button, .btn-save, .btn-tan {
 }
 
 button:hover, .btn-save:hover {
-    background-color: var(--olive);
+    background-color: var(--cream);
 }
 
 .form-links {
