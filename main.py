@@ -1,13 +1,12 @@
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager
 from config import Config
-from models import db, User, UserProfile
+from models import db, User, UserProfile, Product, Offer
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-from models import db, User, UserProfile, Product, Offer
 
 
 app = Flask(__name__)
@@ -141,7 +140,6 @@ def login():
         return render_template('login.html')
 
     login_user(user)
-    access_token = create_access_token(identity=user.id)
     flash(f"Welcome back, {user.name}.", "success")
     if current_user.profile:
         return redirect(url_for('dashboard'))
@@ -253,12 +251,7 @@ def edit_profile():
     return redirect(url_for('profile'))
 
 
-
-
-#===============================================Dashboard===================================================================
-
-
-
+ #===============================================Dashboard===================================================================
 
 @app.route('/dashboard')
 def dashboard():
@@ -272,13 +265,9 @@ def dashboard():
         latest_products=latest_products,
         all_products=all_products
     )
-    
-    
-    
-#===============================================Catalogue===================================================================
 
 
-
+ #===============================================Catalogue===================================================================
 
 @app.route('/catalogue')
 def catalogue():
@@ -300,8 +289,7 @@ def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     return render_template('product_detail.html', product=product)
 
-    
-    
+
  #===============================================Logout===================================================================
 
 @app.route('/logout')
@@ -313,9 +301,7 @@ def logout():
     return redirect(url_for('home'))
 
 
-
-
-#===============================================Forgot Password===================================================================
+ #===============================================Forgot Password===================================================================
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -330,8 +316,6 @@ def forgot_password():
 
     user = User.query.filter_by(email=email).first()
 
-    # Always show the same message, whether or not the account exists —
-    # this prevents someone from using this form to check which emails are registered.
     if user and user.password_hash:
         token = serializer.dumps(user.email, salt='password-reset')
         link = url_for('reset_password', token=token, _external=True)
@@ -384,10 +368,7 @@ def reset_password(token):
     return redirect(url_for('login'))
 
 
-
  #===============================================Delete Account===================================================================
-
-
 
 @app.route('/profile/delete', methods=['GET', 'POST'])
 @login_required
