@@ -3,34 +3,52 @@
 {% block title %}Your profile{% endblock %}
 
 {% block content %}
-<div class="onboarding">
-    <a href="{{ url_for('dashboard') }}">ORLE</a>
-    <h1>Your profile</h1>
+<div class="profile-page">
 
-    <h2>Account details</h2>
-    <div class="option-list">
-        <div class="option-row"><strong>Name</strong>&nbsp;— {{ user.name }}</div>
-        <div class="option-row"><strong>Email</strong>&nbsp;— {{ user.email }}</div>
-        <div class="option-row"><strong>Phone</strong>&nbsp;— {{ user.phone_number or "Not provided" }}</div>
-        <a href="{{ url_for('logout') }}"><button="btn-save">LOGOUT</button></a>
-        <a href="{{ url_for('edit_profile') }}"><button class="btn-save">Edit account details</button></a>
-        <a href="{{ url_for('delete_account') }}">Delete my account</a>
-
+    <div class="profile-header">
+        <div class="profile-avatar">{{ user.name[0]|upper }}</div>
+        <div>
+            <h1>{{ user.name }}</h1>
+            <p class="onboarding-sub">{{ user.email }}</p>
+        </div>
     </div>
 
-    {% if profile %}
-        <h2>Style profile</h2>
-        <div class="option-list">
-            <div class="option-row"><strong>Age group</strong>&nbsp;— {{ profile.age_group }}</div>
-            <div class="option-row"><strong>Height range</strong>&nbsp;— {{ profile.height_range }}</div>
-            <div class="option-row"><strong>Body type</strong>&nbsp;— {{ profile.body_type }}</div>
-            <div class="option-row"><strong>Skin tone</strong>&nbsp;— {{ profile.skin_tone }}</div>
-            <div class="option-row"><strong>Dressing for</strong>&nbsp;— {{ profile.occasion }}</div>
+    <div class="profile-card">
+        <div class="profile-card-head">
+            <h2>Account Details</h2>
+            <a href="{{ url_for('edit_profile') }}" class="text-link">Edit</a>
         </div>
-        <a href="{{ url_for('onboarding') }}"><button class="btn-save">Edit style profile</button></a>
-    {% else %}
-        <p class="onboarding-sub">You haven't completed your style profile yet.</p>
-        <a href="{{ url_for('onboarding') }}"><button class="btn-save">Complete your style profile</button></a>
-    {% endif %}
+        <div class="option-list">
+            <div class="option-row"><span>Name</span><strong>{{ user.name }}</strong></div>
+            <div class="option-row"><span>Email</span><strong>{{ user.email }}</strong></div>
+            <div class="option-row"><span>Phone</span><strong>{{ user.phone_number or "Not provided" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="profile-card">
+        <div class="profile-card-head">
+            <h2>Style Profile</h2>
+            <a href="{{ url_for('onboarding') }}" class="text-link">Edit</a>
+        </div>
+
+        {% if profile %}
+            <div class="option-list">
+                <div class="option-row"><span>Age group</span><strong>{{ profile.age_group }}</strong></div>
+                <div class="option-row"><span>Height range</span><strong>{{ profile.height_range }}</strong></div>
+                <div class="option-row"><span>Body type</span><strong>{{ profile.body_type }}</strong></div>
+                <div class="option-row"><span>Skin tone</span><strong>{{ profile.skin_tone }}</strong></div>
+                <div class="option-row"><span>Dressing for</span><strong>{{ profile.occasion }}</strong></div>
+            </div>
+        {% else %}
+            <p class="onboarding-sub">You haven't completed your style profile yet.</p>
+            <a href="{{ url_for('onboarding') }}"><button class="btn-save">Complete your style profile</button></a>
+        {% endif %}
+    </div>
+
+    <div class="profile-actions">
+        <a href="{{ url_for('logout') }}"><button class="btn-outline">Log Out</button></a>
+        <a href="{{ url_for('delete_account') }}" class="danger-link">Delete my account</a>
+    </div>
+
 </div>
 {% endblock %}
