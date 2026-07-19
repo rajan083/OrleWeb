@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
     <title>{% block title %}ORLE{% endblock %}</title>
 </head>
@@ -40,6 +40,34 @@
 
 {% block content %}
 {% endblock %}
+
+<footer>
+    <div class="footer-grid">
+        <div>
+            <div class="wordmark-sm">ORLE</div>
+            <p>Formalwear built around your body type, skin tone, and the occasion — not just your size.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Shop</h4>
+            <a href="{{ url_for('catalogue') }}">The Edit</a>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        </div>
+        <div class="footer-col">
+            <h4>Account</h4>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('profile') }}">Profile</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Sign In</a>
+                <a href="{{ url_for('register') }}">Register</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 ORLE</span>
+        <span>PRIVACY · TERMS</span>
+    </div>
+</footer>
 
 <script>
   document.querySelectorAll('.flash-message').forEach(function (el) {

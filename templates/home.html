@@ -1,13 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}HOME-ORLE{% endblock %}
+{% block title %}ORLE — Tailored for the modern man{% endblock %}
 
 {% block content %}
 
-<div class="form-wrapper">
-    <a href="{{ url_for('login') }}">
-        <button>GET STARTED</button>
-    </a>
+<div class="carousel-wrapper">
+    <div class="carousel" id="heroCarousel">
+        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=1400&q=80');"></div>
+        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1400&q=80');"></div>
+        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1622519407650-3df9883f76a5?w=1400&q=80');"></div>
+        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1400&q=80');"></div>
+    </div>
+    <div class="carousel-dots" id="carouselDots"></div>
 </div>
+
+<section class="intro-section">
+    <h1>Dressed for the room you're walking into</h1>
+    <p>ORLE builds a style profile from your body type, your skin tone, and the occasion — then
+        recommends formalwear that's actually made to fit, not just sized to fit. Suits, sherwanis,
+        tuxedos, and tailoring, chosen for you, not just shown to you.</p>
+    <a href="{{ url_for('login') }}"><button class="btn-tan">Get Started</button></a>
+</section>
+
+<section class="feature-strip">
+    <div class="feature">
+        <h3>01</h3>
+        <p>Tell us your body type, skin tone, and the occasion you're dressing for.</p>
+    </div>
+    <div class="feature">
+        <h3>02</h3>
+        <p>We match you against pieces built for your exact silhouette.</p>
+    </div>
+    <div class="feature">
+        <h3>03</h3>
+        <p>Shop with confidence — every recommendation comes with a fit note.</p>
+    </div>
+</section>
+
+<script>
+  const track = document.getElementById('heroCarousel');
+  const dotsContainer = document.getElementById('carouselDots');
+  const slides = track.querySelectorAll('.carousel-slide');
+  let current = 0;
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.classList.add('carousel-dot');
+    if (i === 0) dot.classList.add('active');
+    dot.addEventListener('click', () => goToSlide(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  function goToSlide(index) {
+    current = index;
+    track.scrollTo({ left: track.clientWidth * index, behavior: 'smooth' });
+    updateDots();
+  }
+
+  function updateDots() {
+    document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === current);
+    });
+  }
+
+  track.addEventListener('scroll', () => {
+    const index = Math.round(track.scrollLeft / track.clientWidth);
+    if (index !== current) {
+      current = index;
+      updateDots();
+    }
+  });
+
+  setInterval(() => {
+    current = (current + 1) % slides.length;
+    goToSlide(current);
+  }, 5000);
+</script>
 
 {% endblock %}

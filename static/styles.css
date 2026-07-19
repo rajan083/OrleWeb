@@ -5,7 +5,7 @@
     --grey: #8A8A82;
     --light-grey: #D8D6CE;
     --black: #141412;
-    --tan: #C9A667;
+    --tan: #343434;
     --olive: #5C6B4A;
     --error-bg: #fdecea;
     --error-text: #b3261e;
@@ -17,7 +17,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Questrial', sans-serif;
 }
 
 body {
@@ -342,12 +342,17 @@ button:hover, .btn-save:hover {
 .btn-tan {
     display: inline-block;
     background: var(--tan);
-    color: var(--black);
+    color: var(--cream);
     font-weight: 600;
     padding: 14px 26px;
 }
 
-.btn-tan:hover { background: #dab77c; }
+.intro-section .btn-tan:hover {
+    background: var(--off-white);
+    color: var(--black);
+    border-bottom: 1px solid var(--charcoal);
+    font-weight: 700;
+}
 
 /* ============ DASHBOARD / CATALOGUE SECTIONS ============ */
 .offers-strip {
@@ -602,4 +607,190 @@ button:hover, .btn-save:hover {
 .danger-link:hover {
     opacity: 1;
     border-bottom: 1px solid var(--error-text);
+}
+
+/* ============ CAROUSEL ============ */
+.carousel-wrapper {
+    width: 90%;
+    max-width: 1200px;
+    margin: 32px auto 0;
+}
+
+.carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-radius: 6px;
+    height: 45vh;
+    min-height: 320px;
+    max-height: 520px;
+}
+
+.carousel::-webkit-scrollbar { display: none; }
+
+.carousel-slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    background-size: cover;
+    background-position: center;
+}
+
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--light-grey);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+.carousel-dot.active {
+    background: var(--olive);
+    width: 20px;
+    border-radius: 4px;
+}
+
+@media (max-width: 700px) {
+    .carousel {
+        height: 42vh;
+        min-height: 260px;
+    }
+}
+
+/* ============ INTRO SECTION ============ */
+.intro-section {
+    max-width: 640px;
+    margin: 56px auto;
+    padding: 0 24px;
+    text-align: center;
+}
+
+.intro-section h1 {
+    font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.3;
+    margin-bottom: 18px;
+}
+
+.intro-section p {
+    font-size: 15px;
+    color: var(--grey);
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+
+.intro-section .btn-tan {
+    border: none;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+/* ============ FEATURE STRIP ============ */
+.feature-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    max-width: 1000px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+}
+
+.feature h3 {
+    font-size: 13px;
+    color: var(--tan);
+    margin-bottom: 8px;
+    letter-spacing: 0.08em;
+}
+
+.feature p {
+    font-size: 13.5px;
+    color: var(--charcoal);
+    line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+    .feature-strip {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+}
+
+/* ============ FOOTER ============ */
+:root {
+    /* ... existing variables ... */
+    --footer-bg: #4a4e4a;  /* was #3A3A34 — now genuinely dark, closer to --black */
+}
+
+footer {
+    background: var(--footer-bg);
+    color: #FFFFFF;
+    padding: 56px 48px 30px;
+    margin-top: 60px;
+}
+
+.footer-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 40px;
+    padding-bottom: 36px;
+}
+
+.footer-grid .wordmark-sm {
+    color: #FFFFFF;
+    font-size: 22px;
+}
+
+.footer-grid p {
+    font-size: 13.5px;
+    color: #C9C7BF;  /* was --light-grey — brighter now for real contrast against dark bg */
+    margin-top: 12px;
+    max-width: 280px;
+    line-height: 1.7;
+}
+
+.footer-col h4 {
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--tan);  /* tan already reads well against dark — kept as-is */
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+.footer-col a {
+    display: block;
+    color: #E8E6DE;  /* was --light-grey — bumped up significantly */
+    font-size: 13.5px;
+    margin-bottom: 12px;
+}
+
+.footer-col a:hover {
+    color: var(--tan);
+}
+
+.footer-bottom {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 11px;
+    color: #9C9A92;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
 }
