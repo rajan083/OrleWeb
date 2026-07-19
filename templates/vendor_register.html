@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Vendor Registration{% endblock %}
+{% block content %}
+<div class="form-wrapper">
+    <div class="form-card">
+        <p>Already registered? <a href="{{ url_for('vendor_login') }}">Sign in</a></p>
+        <form action="{{ url_for('vendor_register') }}" method="POST">
+            <input type="text" name="business_name" placeholder="Business name" required>
+            <input type="email" name="email" placeholder="business@email.com" required>
+            <input type="tel" name="phone_number" placeholder="Phone number">
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="password" name="confirm_password" placeholder="Confirm password" required>
+            <button type="submit">Create vendor account</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

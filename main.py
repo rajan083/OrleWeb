@@ -2,7 +2,9 @@ from flask import Flask, request, render_template, redirect, url_for, session, f
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_jwt_extended import JWTManager
 from config import Config
-from models import db, User, UserProfile, Product, Offer
+from functools import wraps
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale
+from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -47,8 +49,27 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Old session format: "5"
+    if "-" not in user_id:
+        return User.query.get(int(user_id))
 
+    # New format: "user-5" or "vendor-3"
+    kind, real_id = user_id.split("-", 1)
+
+    if kind == "user":
+        return User.query.get(int(real_id))
+    elif kind == "vendor":
+        return Vendor.query.get(int(real_id))
+
+    return None
+def vendor_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not getattr(current_user, 'is_vendor', False):
+            flash("Please log in as a vendor to access this page.", "error")
+            return redirect(url_for('vendor_login'))
+        return f(*args, **kwargs)
+    return decorated
 
  #===============================================Register===================================================================
 
@@ -391,6 +412,222 @@ def delete_account():
 
     flash("Your account has been deleted. We're sorry to see you go.", "info")
     return redirect(url_for('home'))
+
+
+#===============================================Vendor Auth===================================================================
+
+@app.route('/vendor/register', methods=['GET', 'POST'])
+def vendor_register():
+    if request.method == 'GET':
+        return render_template('vendor_register.html')
+
+    business_name = request.form.get('business_name')
+    email = request.form.get('email')
+    phone_number = request.form.get('phone_number')
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirm_password')
+
+    if not business_name or not email or not password or not confirm_password:
+        flash("Please fill in all required fields.", "error")
+        return render_template('vendor_register.html')
+
+    if password != confirm_password:
+        flash("Passwords don't match.", "error")
+        return render_template('vendor_register.html')
+
+    if Vendor.query.filter_by(email=email).first():
+        flash("A vendor account with this email already exists.", "error")
+        return redirect(url_for('vendor_login'))
+
+    vendor = Vendor(business_name=business_name, email=email, phone_number=phone_number)
+    vendor.set_password(password)
+    db.session.add(vendor)
+    db.session.commit()
+
+    flash("Vendor account created. You can log in now.", "success")
+    return redirect(url_for('vendor_login'))
+
+
+@app.route('/vendor/login', methods=['GET', 'POST'])
+def vendor_login():
+    if request.method == 'GET':
+        return render_template('vendor_login.html')
+
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    vendor = Vendor.query.filter_by(email=email).first()
+
+    if not vendor or not vendor.check_password(password):
+        flash("Invalid vendor credentials.", "error")
+        return render_template('vendor_login.html')
+
+    login_user(vendor)
+    flash(f"Welcome back, {vendor.business_name}.", "success")
+    return redirect(url_for('vendor_dashboard'))
+
+
+#===============================================Vendor Dashboard===================================================================
+
+@app.route('/vendor/dashboard')
+@vendor_required
+def vendor_dashboard():
+    products = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).all()
+    return render_template('vendor_dashboard.html', products=products)
+
+
+@app.route('/vendor/products/add', methods=['GET', 'POST'])
+@vendor_required
+def vendor_add_product():
+    if request.method == 'GET':
+        return render_template('vendor_product_form.html', product=None)
+
+    product = Product(
+        name=request.form.get('name'),
+        description=request.form.get('description'),
+        price=int(request.form.get('price') or 0),
+        category=request.form.get('category'),
+        image_url=request.form.get('image_url'),
+        best_for_body_types=request.form.get('best_for_body_types'),
+        best_for_occasions=request.form.get('best_for_occasions'),
+        fit_note=request.form.get('fit_note'),
+        vendor_id=current_user.id
+    )
+    db.session.add(product)
+    db.session.commit()
+
+    flash("Product listed.", "success")
+    return redirect(url_for('vendor_dashboard'))
+
+
+@app.route('/vendor/products/<int:product_id>/edit', methods=['GET', 'POST'])
+@vendor_required
+def vendor_edit_product(product_id):
+    product = Product.query.get_or_404(product_id)
+
+    if product.vendor_id != current_user.id:
+        flash("You don't have permission to edit this product.", "error")
+        return redirect(url_for('vendor_dashboard'))
+
+    if request.method == 'GET':
+        return render_template('vendor_product_form.html', product=product)
+
+    product.name = request.form.get('name')
+    product.description = request.form.get('description')
+    product.price = int(request.form.get('price') or 0)
+    product.category = request.form.get('category')
+    product.image_url = request.form.get('image_url')
+    product.best_for_body_types = request.form.get('best_for_body_types')
+    product.best_for_occasions = request.form.get('best_for_occasions')
+    product.fit_note = request.form.get('fit_note')
+    db.session.commit()
+
+    flash("Product updated.", "success")
+    return redirect(url_for('vendor_dashboard'))
+
+
+@app.route('/vendor/products/<int:product_id>/delete', methods=['POST'])
+@vendor_required
+def vendor_delete_product(product_id):
+    product = Product.query.get_or_404(product_id)
+
+    if product.vendor_id != current_user.id:
+        flash("You don't have permission to delete this product.", "error")
+        return redirect(url_for('vendor_dashboard'))
+
+    db.session.delete(product)
+    db.session.commit()
+    flash("Product removed.", "info")
+    return redirect(url_for('vendor_dashboard'))
+
+#===============================================Vendor Profile & Sales===================================================================
+
+@app.route('/vendor/profile')
+@vendor_required
+def vendor_profile():
+    start = request.args.get('start')
+    end = request.args.get('end')
+
+    if start:
+        start_date = datetime.strptime(start, '%Y-%m-%d').date()
+    else:
+        start_date = (datetime.utcnow() - timedelta(days=30)).date()
+
+    if end:
+        end_date = datetime.strptime(end, '%Y-%m-%d').date()
+    else:
+        end_date = datetime.utcnow().date()
+
+    sales = Sale.query.filter(
+        Sale.vendor_id == current_user.id,
+        Sale.sale_date >= start_date,
+        Sale.sale_date <= end_date
+    ).order_by(Sale.sale_date.asc()).all()
+
+    # Group totals by date for the chart
+    daily_totals = {}
+    for sale in sales:
+        key = sale.sale_date.isoformat()
+        daily_totals[key] = daily_totals.get(key, 0) + sale.amount
+
+    chart_labels = list(daily_totals.keys())
+    chart_values = list(daily_totals.values())
+
+    total_revenue = sum(s.amount for s in sales)
+    total_units = sum(s.quantity for s in sales)
+
+    products = Product.query.filter_by(vendor_id=current_user.id).all()
+
+    return render_template(
+        'vendor_profile.html',
+        vendor=current_user,
+        sales=sales,
+        products=products,
+        chart_labels=chart_labels,
+        chart_values=chart_values,
+        total_revenue=total_revenue,
+        total_units=total_units,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat()
+    )
+
+
+@app.route('/vendor/sales/add', methods=['POST'])
+@vendor_required
+def vendor_add_sale():
+    product_id = request.form.get('product_id')
+    product = Product.query.get_or_404(product_id)
+
+    if product.vendor_id != current_user.id:
+        flash("You can only log sales for your own products.", "error")
+        return redirect(url_for('vendor_profile'))
+
+    sale = Sale(
+        vendor_id=current_user.id,
+        product_id=product.id,
+        quantity=int(request.form.get('quantity') or 1),
+        amount=int(request.form.get('amount') or 0),
+        sale_date=datetime.strptime(request.form.get('sale_date'), '%Y-%m-%d').date()
+    )
+    db.session.add(sale)
+    db.session.commit()
+    flash("Sale logged.", "success")
+    return redirect(url_for('vendor_profile'))
+
+
+@app.route('/vendor/sales/<int:sale_id>/delete', methods=['POST'])
+@vendor_required
+def vendor_delete_sale(sale_id):
+    sale = Sale.query.get_or_404(sale_id)
+
+    if sale.vendor_id != current_user.id:
+        flash("You don't have permission to delete this entry.", "error")
+        return redirect(url_for('vendor_profile'))
+
+    db.session.delete(sale)
+    db.session.commit()
+    flash("Sale entry removed.", "info")
+    return redirect(url_for('vendor_profile'))
 
 
  #===============================================Home===================================================================

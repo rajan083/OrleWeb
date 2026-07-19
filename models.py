@@ -23,6 +23,11 @@ class User(db.Model, UserMixin):
     
     profile = db.relationship('UserProfile', backref='user', uselist=False, cascade='all, delete-orphan')
     
+    is_vendor = False
+    
+    def get_id(self):
+        return f"user - {self.id}"
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
@@ -77,6 +82,8 @@ class Product(db.Model):
 
     fit_note = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
 
     def to_dict(self):
         return {
@@ -101,3 +108,58 @@ class Offer(db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class Vendor(db.Model, UserMixin):
+    __tablename__ = 'vendors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    business_name = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(220), unique=True, nullable=False)
+    phone_number = db.Column(db.String(20), nullable=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    products = db.relationship('Product', backref='vendor', lazy=True)
+
+    is_vendor = True  # lets base.html tell customers and vendors apart without isinstance()
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def get_id(self):
+        return f"vendor-{self.id}"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'business_name': self.business_name,
+            'email': self.email,
+            'phone_number': self.phone_number
+        }
+
+
+class Sale(db.Model):
+    __tablename__ = 'sales'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)  # total sale value, whole rupees
+    sale_date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship('Product')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_name': self.product.name if self.product else 'Unknown',
+            'quantity': self.quantity,
+            'amount': self.amount,
+            'sale_date': self.sale_date.isoformat()
+        }
