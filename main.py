@@ -1,3 +1,6 @@
+import os
+import uuid
+from werkzeug.utils import secure_filename
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_jwt_extended import JWTManager
@@ -13,6 +16,13 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads", "products")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -49,19 +59,26 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Old session format: "5"
     if "-" not in user_id:
         return User.query.get(int(user_id))
 
-    # New format: "user-5" or "vendor-3"
-    kind, real_id = user_id.split("-", 1)
+    kind, real_id = [x.strip() for x in user_id.split("-", 1)]
 
     if kind == "user":
         return User.query.get(int(real_id))
+
     elif kind == "vendor":
         return Vendor.query.get(int(real_id))
 
     return None
+
+
+def allowed_file(filename):
+    return (
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
+
 def vendor_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -482,21 +499,43 @@ def vendor_add_product():
     if request.method == 'GET':
         return render_template('vendor_product_form.html', product=None)
 
+    image = request.files.get("product_image")
+    image_path = None
+
+    if image and image.filename:
+
+        if not allowed_file(image.filename):
+            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+            return redirect(request.url)
+
+        extension = image.filename.rsplit(".", 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{extension}"
+
+        image.save(
+            os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                filename
+            )
+        )
+
+        image_path = f"uploads/products/{filename}"
+
     product = Product(
         name=request.form.get('name'),
         description=request.form.get('description'),
         price=int(request.form.get('price') or 0),
         category=request.form.get('category'),
-        image_url=request.form.get('image_url'),
+        image_url=image_path,
         best_for_body_types=request.form.get('best_for_body_types'),
         best_for_occasions=request.form.get('best_for_occasions'),
         fit_note=request.form.get('fit_note'),
         vendor_id=current_user.id
     )
+
     db.session.add(product)
     db.session.commit()
 
-    flash("Product listed.", "success")
+    flash("Product listed successfully.", "success")
     return redirect(url_for('vendor_dashboard'))
 
 
@@ -516,11 +555,30 @@ def vendor_edit_product(product_id):
     product.description = request.form.get('description')
     product.price = int(request.form.get('price') or 0)
     product.category = request.form.get('category')
-    product.image_url = request.form.get('image_url')
     product.best_for_body_types = request.form.get('best_for_body_types')
     product.best_for_occasions = request.form.get('best_for_occasions')
     product.fit_note = request.form.get('fit_note')
-    db.session.commit()
+
+    image = request.files.get("product_image")
+
+    if image and image.filename:
+
+        if not allowed_file(image.filename):
+            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+            return redirect(request.url)
+
+        extension = image.filename.rsplit(".", 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{extension}"
+
+        image.save(
+            os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                filename
+            )
+        )
+
+        product.image_url = f"uploads/products/{filename}"    
+        db.session.commit()
 
     flash("Product updated.", "success")
     return redirect(url_for('vendor_dashboard'))

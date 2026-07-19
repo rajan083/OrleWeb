@@ -11,7 +11,7 @@
         <div class="product-grid">
             {% for product in products %}
                 <div class="product-card">
-                    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+                    <img src="{{ url_for('static', filename=product.image_url) }}">
                     <div class="product-card-body">
                         <h4>{{ product.name }}</h4>
                         <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>

@@ -4,7 +4,8 @@
 <div class="onboarding">
     <h1>{{ 'Edit product' if product else 'List a new product' }}</h1>
 
-    <form action="{{ url_for('vendor_edit_product', product_id=product.id) if product else url_for('vendor_add_product') }}" method="POST">
+    <form action="{{ url_for('vendor_edit_product', product_id=product.id) if product else url_for('vendor_add_product') }}" method="POST" enctype="multipart/form-data">
+        
         <div class="field">
             <label>Name</label>
             <input type="text" name="name" value="{{ product.name if product else '' }}" required>
@@ -22,9 +23,19 @@
             <input type="text" name="category" value="{{ product.category if product else '' }}" placeholder="suit, blazer, trouser..." required>
         </div>
         <div class="field">
-            <label>Image URL</label>
-            <input type="text" name="image_url" value="{{ product.image_url if product else '' }}">
-        </div>
+            <label>Product Image</label>
+
+            {% if product and product.image_url %}
+                <img
+                    src="{{ url_for('static', filename=product.image_url) }}"
+                    style="width:150px;border-radius:10px;margin-bottom:12px;">
+            {% endif %}
+
+            <input
+                type="file"
+                name="product_image"
+                accept=".jpg,.jpeg,.png,.webp">
+        </div>        
         <div class="field">
             <label>Best for body types (comma-separated)</label>
             <input type="text" name="best_for_body_types" value="{{ product.best_for_body_types if product else '' }}">
