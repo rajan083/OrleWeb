@@ -7,6 +7,7 @@ from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from models import db, User, UserProfile, Product, Offer
 
 
 app = Flask(__name__)
@@ -142,6 +143,8 @@ def login():
     login_user(user)
     access_token = create_access_token(identity=user.id)
     flash(f"Welcome back, {user.name}.", "success")
+    if current_user.profile:
+        return redirect(url_for('dashboard'))
     return redirect(url_for('onboarding'))
 
 
@@ -250,6 +253,55 @@ def edit_profile():
     return redirect(url_for('profile'))
 
 
+
+
+#===============================================Dashboard===================================================================
+
+
+
+
+@app.route('/dashboard')
+def dashboard():
+    offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
+    latest_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
+    all_products = Product.query.order_by(Product.created_at.desc()).all()
+
+    return render_template(
+        'dashboard.html',
+        offers=offers,
+        latest_products=latest_products,
+        all_products=all_products
+    )
+    
+    
+    
+#===============================================Catalogue===================================================================
+
+
+
+
+@app.route('/catalogue')
+def catalogue():
+    category = request.args.get('category')
+
+    query = Product.query
+    if category:
+        query = query.filter_by(category=category)
+
+    products = query.order_by(Product.created_at.desc()).all()
+    categories = db.session.query(Product.category).distinct().all()
+    categories = [c[0] for c in categories]
+
+    return render_template('catalogue.html', products=products, categories=categories, active_category=category)
+
+
+@app.route('/catalogue/<int:product_id>')
+def product_detail(product_id):
+    product = Product.query.get_or_404(product_id)
+    return render_template('product_detail.html', product=product)
+
+    
+    
  #===============================================Logout===================================================================
 
 @app.route('/logout')

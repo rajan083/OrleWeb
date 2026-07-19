@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}The Edit — ORLE{% endblock %}
+
+{% block content %}
+<div class="catalogue">
+    <h1>The Edit</h1>
+
+    <div class="category-filter">
+        <a href="{{ url_for('catalogue') }}" class="{{ 'active' if not active_category else '' }}">All</a>
+        {% for cat in categories %}
+            <a href="{{ url_for('catalogue', category=cat) }}" class="{{ 'active' if active_category == cat else '' }}">{{ cat|title }}</a>
+        {% endfor %}
+    </div>
+
+    {% if products %}
+        <div class="product-grid">
+            {% for product in products %}
+                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h3>{{ product.name }}</h3>
+                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">No pieces in this category yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

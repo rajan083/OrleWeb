@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}ORLE{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('profile') }}">PROFILE</a>
+
+{% if offers %}
+<div class="offers-strip">
+    {% for offer in offers %}
+        <a href="{{ offer.link_url or '#' }}" class="offer-card">
+            <img src="{{ offer.image_url }}" alt="{{ offer.title }}">
+            <div class="offer-overlay">
+                <h3>{{ offer.title }}</h3>
+                {% if offer.subtitle %}<p>{{ offer.subtitle }}</p>{% endif %}
+            </div>
+        </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="dashboard-section">
+    <div class="section-head">
+        <h2>New In</h2>
+        <a href="{{ url_for('catalogue') }}">View all →</a>
+    </div>
+
+    {% if latest_products %}
+        <div class="product-grid">
+            {% for product in latest_products %}
+                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h3>{{ product.name }}</h3>
+                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">No pieces added yet.</p>
+    {% endif %}
+</div>
+
+<div class="dashboard-section">
+    <div class="section-head">
+        <h2>All Pieces</h2>
+    </div>
+
+    {% if all_products %}
+        <div class="product-grid">
+            {% for product in all_products %}
+                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h3>{{ product.name }}</h3>
+                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">The catalogue is empty right now.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

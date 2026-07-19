@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} — ORLE{% endblock %}
+
+{% block content %}
+<div class="product-detail">
+    <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-detail-img">
+
+    <div class="product-detail-info">
+        <h1>{{ product.name }}</h1>
+        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+        <p class="onboarding-sub">{{ product.description }}</p>
+
+        {% if product.fit_note %}
+            <div class="fit-note">
+                <strong>Fit —</strong> {{ product.fit_note }}
+            </div>
+        {% endif %}
+
+        <a href="{{ url_for('catalogue') }}">← Back to The Edit</a>
+    </div>
+</div>
+{% endblock %}
