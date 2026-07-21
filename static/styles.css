@@ -725,7 +725,6 @@ button:hover, .btn-save:hover {
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scrollbar-width: none;
     -ms-overflow-style: none;
     border-radius: 6px;
     height: 45vh;
@@ -733,8 +732,15 @@ button:hover, .btn-save:hover {
     max-height: 520px;
 }
 
-.carousel::-webkit-scrollbar { display: none; }
+.carousel::-webkit-scrollbar {
+    display: none;
+}
 
+@supports (scrollbar-width: auto) {
+    .carousel {
+        scrollbar-width: none;
+    }
+}
 .carousel-slide {
     flex: 0 0 100%;
     scroll-snap-align: start;
