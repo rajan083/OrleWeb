@@ -18,6 +18,16 @@
 </div>
 {% endif %}
 
+{% if current_user.is_authenticated and not current_user.is_vendor and current_user.profile %}
+<div class="dashboard-section" style="padding-top:20px;">
+    <div class="section-head">
+        <h2>Recommended for You</h2>
+        <a href="{{ url_for('recommendations') }}">See all →</a>
+    </div>
+    <p class="onboarding-sub">Based on your style profile.</p>
+</div>
+{% endif %}
+
 <div class="dashboard-section">
     <div class="section-head">
         <h2>New In</h2>

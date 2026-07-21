@@ -53,6 +53,8 @@ class UserProfile(db.Model):
     skin_tone = db.Column(db.String(20), nullable=True)
     occasion = db.Column(db.String(30), nullable=True)
     
+    undertone = db.Column(db.String(10), nullable=True)
+                          
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
@@ -77,6 +79,10 @@ class Product(db.Model):
 
     best_for_body_types = db.Column(db.String(200), nullable=True)
     best_for_occasions = db.Column(db.String(200), nullable=True)
+    
+    color = db.Column(db.String(30), nullable=True)          # e.g. "navy", "olive", "cream", "burgundy"
+    color_undertone = db.Column(db.String(10), nullable=True)  # "warm", "cool", "neutral"
+    silhouette = db.Column(db.String(30), nullable=True)       # "structured", "relaxed", "fitted"
 
     fit_note = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

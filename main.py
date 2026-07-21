@@ -12,6 +12,7 @@ from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from recommendations import recommend_products
 
 
 app = Flask(__name__)
@@ -257,7 +258,7 @@ def onboarding():
 
     db.session.commit()
     flash("Your style profile has been saved.", "success")
-    return redirect(url_for('profile'))
+    return redirect(url_for('recommendations'))
 
 
  #===============================================Profile===================================================================
@@ -327,6 +328,20 @@ def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     return render_template('product_detail.html', product=product)
 
+ #===============================================Recommendations===================================================================
+
+@app.route('/recommendations')
+@login_required
+def recommendations():
+    profile = current_user.profile
+    if not profile:
+        flash("Complete your style profile first to get recommendations.", "error")
+        return redirect(url_for('onboarding'))
+
+    all_products = Product.query.all()
+    ranked = recommend_products(profile, all_products, top_n=12)
+
+    return render_template('recommendations.html', ranked=ranked)
 
  #===============================================Logout===================================================================
 

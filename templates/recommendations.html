@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Recommended for you{% endblock %}
+{% block content %}
+<div class="dashboard-section">
+    <div class="section-head">
+        <h2>Recommended for You</h2>
+    </div>
+
+    <div class="product-grid">
+        {% for product, score, breakdown in ranked %}
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
+                <img src="{{ url_for('static', filename=product.image_url) }}">
+                <div class="product-card-body">
+                    <h4>{{ product.name }}</h4>
+                    <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                    <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

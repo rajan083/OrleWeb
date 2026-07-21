@@ -13,10 +13,11 @@
 <nav>
     <a href="{{ url_for('home') }}" class="wordmark-sm">ORLE</a>
 
-    <button class="menu-toggle" id="menu-toggle">
-        ☰
+    <button class="menu-toggle" id="menu-toggle" aria-label="Menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
     </button>
-
     <div class="nav-container" id="nav-container">
 
         <div class="nav-links">
@@ -34,6 +35,7 @@
                     <a href="{{ url_for('logout') }}">Logout</a>
 
                 {% else %}
+                    <a href="{{ url_for('recommendations') }}">For You</a>
                     <a href="{{ url_for('profile') }}">Profile</a>
                     <a href="{{ url_for('logout') }}">Logout</a>
 
@@ -118,13 +120,9 @@ const nav = document.getElementById("nav-container");
 
 menu.addEventListener("click", () => {
     nav.classList.toggle("active");
-
-    if(nav.classList.contains("active")){
-        menu.innerHTML = "✕";
-    }else{
-        menu.innerHTML = "☰";
-    }
+    menu.classList.toggle("active");
 });
 </script>
+
 </body>
 </html>
