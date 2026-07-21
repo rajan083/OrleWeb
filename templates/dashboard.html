@@ -25,6 +25,23 @@
         <a href="{{ url_for('recommendations') }}">See all →</a>
     </div>
     <p class="onboarding-sub">Based on your style profile.</p>
+        {% if recommended %}
+        <div class="product-grid">
+        {% for product, score, breakdown in ranked %}
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
+                <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
+                <div class="product-card-body">
+                    <h4>{{ product.name }}</h4>
+                    <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                    <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
+                </div>
+            </a>
+        {% endfor %}
+        </div>
+    {% else %}
+     <p class="onboarding-sub">We have nothing based on your profile.</p>
+    {% endif %}
+
 </div>
 {% endif %}
 
@@ -38,7 +55,7 @@
         <div class="product-grid">
             {% for product in latest_products %}
                 <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                    <img src="{{ url_for('static', filename=product.image_url) }}">
+                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
                     <div class="product-card-body">
                         <h3>{{ product.name }}</h3>
                         <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
@@ -60,7 +77,7 @@
         <div class="product-grid">
             {% for product in all_products %}
                 <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                    <img src="{{ url_for('static', filename=product.image_url) }}">
+                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
                     <div class="product-card-body">
                         <h3>{{ product.name }}</h3>
                         <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>

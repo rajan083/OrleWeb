@@ -298,13 +298,17 @@ def dashboard():
     latest_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
     all_products = Product.query.order_by(Product.created_at.desc()).all()
 
+    ranked = []
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False) and current_user.profile:
+        ranked = recommend_products(current_user.profile, all_products, top_n=4)
+
     return render_template(
         'dashboard.html',
         offers=offers,
         latest_products=latest_products,
-        all_products=all_products
+        all_products=all_products,
+        ranked=ranked
     )
-
 
  #===============================================Catalogue===================================================================
 
@@ -552,6 +556,15 @@ def vendor_add_product():
 
     flash("Product listed successfully.", "success")
     return redirect(url_for('vendor_dashboard'))
+
+
+@app.template_filter('product_image')
+def product_image(image_url):
+    if not image_url:
+        return url_for('static', filename='img/placeholder.png')
+    if image_url.startswith('http://') or image_url.startswith('https://'):
+        return image_url
+    return url_for('static', filename=image_url)
 
 
 @app.route('/vendor/products/<int:product_id>/edit', methods=['GET', 'POST'])
