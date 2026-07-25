@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -331,6 +331,156 @@ def catalogue():
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     return render_template('product_detail.html', product=product)
+
+
+#===============================================Wishlist===================================================================
+
+@app.route('/wishlist')
+@login_required
+def wishlist():
+    items = Wishlist.query.filter_by(user_id=current_user.id).order_by(Wishlist.created_at.desc()).all()
+    return render_template('wishlist.html', items=items)
+
+
+@app.route('/wishlist/toggle/<int:product_id>', methods=['POST'])
+@login_required
+def wishlist_toggle(product_id):
+    existing = Wishlist.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        flash("Removed from wishlist.", "info")
+    else:
+        db.session.add(Wishlist(user_id=current_user.id, product_id=product_id))
+        db.session.commit()
+        flash("Added to wishlist.", "success")
+
+    return redirect(request.referrer or url_for('catalogue'))
+
+
+#===============================================Cart===================================================================
+
+@app.route('/cart')
+@login_required
+def cart():
+    items = CartItem.query.filter_by(user_id=current_user.id).all()
+    total = sum(item.product.price * item.quantity for item in items if item.product)
+    return render_template('cart.html', items=items, total=total)
+
+
+@app.route('/cart/add/<int:product_id>', methods=['POST'])
+@login_required
+def cart_add(product_id):
+    product = Product.query.get_or_404(product_id)
+    existing = CartItem.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+
+    if existing:
+        existing.quantity += 1
+    else:
+        db.session.add(CartItem(user_id=current_user.id, product_id=product_id, quantity=1))
+
+    db.session.commit()
+    flash(f"{product.name} added to your bag.", "success")
+    return redirect(request.referrer or url_for('catalogue'))
+
+
+@app.route('/cart/update/<int:item_id>', methods=['POST'])
+@login_required
+def cart_update(item_id):
+    item = CartItem.query.get_or_404(item_id)
+    if item.user_id != current_user.id:
+        flash("You don't have permission to modify this item.", "error")
+        return redirect(url_for('cart'))
+
+    quantity = int(request.form.get('quantity') or 1)
+    if quantity < 1:
+        db.session.delete(item)
+    else:
+        item.quantity = quantity
+
+    db.session.commit()
+    return redirect(url_for('cart'))
+
+
+@app.route('/cart/remove/<int:item_id>', methods=['POST'])
+@login_required
+def cart_remove(item_id):
+    item = CartItem.query.get_or_404(item_id)
+    if item.user_id != current_user.id:
+        flash("You don't have permission to modify this item.", "error")
+        return redirect(url_for('cart'))
+
+    db.session.delete(item)
+    db.session.commit()
+    flash("Item removed from bag.", "info")
+    return redirect(url_for('cart'))
+
+#===============================================Checkout & Orders===================================================================
+
+@app.route('/checkout', methods=['GET', 'POST'])
+@login_required
+def checkout():
+    items = CartItem.query.filter_by(user_id=current_user.id).all()
+
+    if not items:
+        flash("Your bag is empty.", "error")
+        return redirect(url_for('cart'))
+
+    total = sum(item.product.price * item.quantity for item in items if item.product)
+
+    if request.method == 'GET':
+        return render_template('checkout.html', items=items, total=total)
+
+    shipping_name = request.form.get('shipping_name')
+    shipping_address = request.form.get('shipping_address')
+    shipping_phone = request.form.get('shipping_phone')
+
+    if not shipping_name or not shipping_address or not shipping_phone:
+        flash("Please fill in all shipping details.", "error")
+        return render_template('checkout.html', items=items, total=total)
+
+    order = Order(
+        user_id=current_user.id,
+        total_amount=total,
+        shipping_name=shipping_name,
+        shipping_address=shipping_address,
+        shipping_phone=shipping_phone
+    )
+    db.session.add(order)
+    db.session.flush()  # assigns order.id before we create the line items below
+
+    for item in items:
+        db.session.add(OrderItem(
+            order_id=order.id,
+            product_id=item.product_id,
+            product_name=item.product.name,
+            unit_price=item.product.price,
+            quantity=item.quantity
+        ))
+        db.session.delete(item)
+
+    db.session.commit()
+    flash("Order placed successfully.", "success")
+    return redirect(url_for('order_detail', order_id=order.id))
+
+
+@app.route('/orders')
+@login_required
+def orders():
+    user_orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
+    return render_template('orders.html', orders=user_orders)
+
+
+@app.route('/orders/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    order = Order.query.get_or_404(order_id)
+    if order.user_id != current_user.id:
+        flash("You don't have permission to view this order.", "error")
+        return redirect(url_for('orders'))
+    return render_template('order_detail.html', order=order)
+
 
  #===============================================Recommendations===================================================================
 

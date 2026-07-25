@@ -16,6 +16,13 @@
             </div>
         {% endif %}
 
+        <form action="{{ url_for('cart_add', product_id=product.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn-save">Add to Bag</button>
+        </form>
+        <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn-outline">♡ Wishlist</button>
+        </form>
+
         <a href="{{ url_for('catalogue') }}">← Back to The Edit</a>
     </div>
 </div>

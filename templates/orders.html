@@ -1,0 +1,21 @@
+{# orders.html #}
+{% extends "base.html" %}
+{% block title %}Your Orders{% endblock %}
+{% block content %}
+<div class="dashboard-section">
+    <h2>Your Orders</h2>
+    {% if orders %}
+        {% for order in orders %}
+        <a href="{{ url_for('order_detail', order_id=order.id) }}" class="profile-card" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <strong>Order #{{ order.id }}</strong>
+                <p class="onboarding-sub" style="margin:0;">{{ order.created_at.strftime('%d %b %Y') }} · {{ order.status|title }}</p>
+            </div>
+            <span>₹{{ "{:,}".format(order.total_amount) }}</span>
+        </a>
+        {% endfor %}
+    {% else %}
+        <p class="onboarding-sub">You haven't placed any orders yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

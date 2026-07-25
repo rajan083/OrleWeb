@@ -167,3 +167,56 @@ class Sale(db.Model):
             'amount': self.amount,
             'sale_date': self.sale_date.isoformat()
         }
+        
+        
+class Wishlist(db.Model):
+    __tablename__ = 'wishlist'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship('Product')
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_user_product_wishlist'),)
+
+
+class CartItem(db.Model):
+    __tablename__ = 'cart_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship('Product')
+
+
+class Order(db.Model):
+    __tablename__ = 'orders'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    total_amount = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='placed')  # placed, shipped, delivered, cancelled
+    shipping_name = db.Column(db.String(200), nullable=False)
+    shipping_address = db.Column(db.Text, nullable=False)
+    shipping_phone = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
+
+
+class OrderItem(db.Model):
+    __tablename__ = 'order_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)  # nullable in case a product is later deleted
+    product_name = db.Column(db.String(150), nullable=False)  # snapshot — survives product deletion
+    unit_price = db.Column(db.Integer, nullable=False)         # snapshot — survives price changes
+    quantity = db.Column(db.Integer, nullable=False)
+
+    product = db.relationship('Product')

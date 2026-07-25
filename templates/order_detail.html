@@ -1,0 +1,23 @@
+{# order_detail.html #}
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="onboarding">
+    <h1>Order #{{ order.id }}</h1>
+    <p class="onboarding-sub">Placed {{ order.created_at.strftime('%d %b %Y') }} · Status: {{ order.status|title }}</p>
+
+    <div class="profile-card">
+        {% for item in order.items %}
+            <div class="option-row"><span>{{ item.product_name }} × {{ item.quantity }}</span><strong>₹{{ "{:,}".format(item.unit_price * item.quantity) }}</strong></div>
+        {% endfor %}
+        <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(order.total_amount) }}</strong></div>
+    </div>
+
+    <div class="profile-card">
+        <h2 style="font-size:12px; color:var(--olive); text-transform:uppercase;">Shipping to</h2>
+        <p>{{ order.shipping_name }}</p>
+        <p>{{ order.shipping_address }}</p>
+        <p>{{ order.shipping_phone }}</p>
+    </div>
+</div>
+{% endblock %}
