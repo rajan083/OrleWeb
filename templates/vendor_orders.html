@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<div class="dashboard-section">
+    <h2>Orders Containing Your Products</h2>
+    {% if orders %}
+        <div class="orders-list">
+            {% for order in orders %}
+            <div class="order-row">
+                <div class="order-row-main">
+                    <div class="order-row-top">
+                        <strong>Order #{{ order.id }}</strong>
+                        <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
+                    </div>
+                    <p class="onboarding-sub" style="margin:2px 0 0;">{{ order.shipping_name }} · {{ order.created_at.strftime('%d %b %Y') }}</p>
+                </div>
+                <form action="{{ url_for('vendor_update_order_status', order_id=order.id) }}" method="POST" style="display:flex; gap:8px;">
+                    <select name="status" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">
+                        <option value="shipped">Mark Shipped</option>
+                        <option value="delivered">Mark Delivered</option>
+                        <option value="cancelled">Cancel</option>
+                    </select>
+                    <button type="submit" style="width:auto; padding:8px 16px;">Update</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">No orders yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

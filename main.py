@@ -6,13 +6,15 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
+import razorpay
+
 
 
 app = Flask(__name__)
@@ -32,6 +34,8 @@ jwt = JWTManager(app)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
+razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
+
 
 def send_verification_email(user):
     token = serializer.dumps(user.email, salt='email-verify')
@@ -45,6 +49,29 @@ def send_verification_email(user):
     mail.send(msg)
 
 
+def send_order_email(order, event):
+    subjects = {
+        'placed': 'Your ORLE order has been placed',
+        'shipped': 'Your ORLE order has shipped',
+        'delivered': 'Your ORLE order has been delivered',
+        'cancelled': 'Your ORLE order has been cancelled'
+    }
+    bodies = {
+        'placed': f"Thanks for your order! Order #{order.id} has been placed and payment confirmed.\n\nTotal: ₹{order.total_amount}\n\nWe'll notify you once it ships.",
+        'shipped': f"Good news — Order #{order.id} is on its way.\n\nShipping to: {order.shipping_name}, {order.shipping_address}",
+        'delivered': f"Order #{order.id} has been marked as delivered. We hope you love it.",
+        'cancelled': f"Order #{order.id} has been cancelled. If a payment was made, it will be refunded within 5-7 business days."
+    }
+
+    msg = Message(
+        subjects.get(event, 'Order update'),
+        recipients=[order.user.email],
+        sender=app.config['MAIL_USERNAME']
+    )
+    msg.body = bodies.get(event, f"Your order status has changed to: {event}")
+    mail.send(msg)
+    
+    
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
@@ -205,16 +232,19 @@ def login_google_callback():
     email = user_info['email']
     google_id = user_info['sub']
     name = user_info.get('name', email.split('@')[0])
+    picture = user_info.get('picture')
 
     user = User.query.filter_by(email=email).first()
     is_new_user = False
 
     if not user:
-        user = User(email=email, name=name, google_id=google_id, is_verified=True)
+        user = User(email=email, name=name, google_id=google_id, is_verified=True, profile_picture=picture)
         db.session.add(user)
         is_new_user = True
     elif not user.google_id:
         user.google_id = google_id
+        if picture:
+            user.profile_picture = picture
 
     db.session.commit()
     login_user(user)
@@ -222,10 +252,13 @@ def login_google_callback():
     if is_new_user:
         flash(f"Welcome to ORLE, {user.name}.", "success")
         return redirect(url_for('onboarding'))
+    elif not user.profile:
+        flash(f"Welcome back, {user.name}. Let's finish setting up your style profile.", "success")
+        return redirect(url_for('onboarding'))
     else:
         flash(f"Welcome back, {user.name}.", "success")
         return redirect(url_for('dashboard'))
-
+    
 
  #===============================================Onboarding===================================================================
 
@@ -296,6 +329,83 @@ def edit_profile():
     flash("Your profile has been updated.", "success")
     return redirect(url_for('profile'))
 
+#===============================================Addresses===================================================================
+
+@app.route('/addresses')
+@login_required
+def addresses():
+    saved = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc(), Address.created_at.desc()).all()
+    return render_template('addresses.html', addresses=saved)
+
+
+@app.route('/addresses/add', methods=['GET', 'POST'])
+@login_required
+def address_add():
+    if request.method == 'GET':
+        return render_template('address_form.html', address=None)
+
+    full_name = request.form.get('full_name')
+    phone = request.form.get('phone')
+    address_line = request.form.get('address_line')
+    make_default = request.form.get('is_default') == 'on'
+
+    if not full_name or not phone or not address_line:
+        flash("Please fill in all address fields.", "error")
+        return render_template('address_form.html', address=None)
+
+    if make_default:
+        Address.query.filter_by(user_id=current_user.id).update({'is_default': False})
+
+    new_address = Address(
+        user_id=current_user.id,
+        full_name=full_name,
+        phone=phone,
+        address_line=address_line,
+        is_default=make_default
+    )
+    db.session.add(new_address)
+    db.session.commit()
+
+    flash("Address saved.", "success")
+    return redirect(request.args.get('next') or url_for('addresses'))
+
+
+@app.route('/addresses/<int:address_id>/edit', methods=['GET', 'POST'])
+@login_required
+def address_edit(address_id):
+    address = Address.query.get_or_404(address_id)
+    if address.user_id != current_user.id:
+        flash("You don't have permission to edit this address.", "error")
+        return redirect(url_for('addresses'))
+
+    if request.method == 'GET':
+        return render_template('address_form.html', address=address)
+
+    address.full_name = request.form.get('full_name')
+    address.phone = request.form.get('phone')
+    address.address_line = request.form.get('address_line')
+
+    if request.form.get('is_default') == 'on':
+        Address.query.filter_by(user_id=current_user.id).update({'is_default': False})
+        address.is_default = True
+
+    db.session.commit()
+    flash("Address updated.", "success")
+    return redirect(url_for('addresses'))
+
+
+@app.route('/addresses/<int:address_id>/delete', methods=['POST'])
+@login_required
+def address_delete(address_id):
+    address = Address.query.get_or_404(address_id)
+    if address.user_id != current_user.id:
+        flash("You don't have permission to delete this address.", "error")
+        return redirect(url_for('addresses'))
+
+    db.session.delete(address)
+    db.session.commit()
+    flash("Address removed.", "info")
+    return redirect(url_for('addresses'))
 
  #===============================================Dashboard===================================================================
 
@@ -438,53 +548,7 @@ def cart_remove(item_id):
     flash("Item removed from bag.", "info")
     return redirect(url_for('cart'))
 
-#===============================================Checkout & Orders===================================================================
 
-@app.route('/checkout', methods=['GET', 'POST'])
-@login_required
-def checkout():
-    items = CartItem.query.filter_by(user_id=current_user.id).all()
-
-    if not items:
-        flash("Your bag is empty.", "error")
-        return redirect(url_for('cart'))
-
-    total = sum(item.product.price * item.quantity for item in items if item.product)
-
-    if request.method == 'GET':
-        return render_template('checkout.html', items=items, total=total)
-
-    shipping_name = request.form.get('shipping_name')
-    shipping_address = request.form.get('shipping_address')
-    shipping_phone = request.form.get('shipping_phone')
-
-    if not shipping_name or not shipping_address or not shipping_phone:
-        flash("Please fill in all shipping details.", "error")
-        return render_template('checkout.html', items=items, total=total)
-
-    order = Order(
-        user_id=current_user.id,
-        total_amount=total,
-        shipping_name=shipping_name,
-        shipping_address=shipping_address,
-        shipping_phone=shipping_phone
-    )
-    db.session.add(order)
-    db.session.flush()  # assigns order.id before we create the line items below
-
-    for item in items:
-        db.session.add(OrderItem(
-            order_id=order.id,
-            product_id=item.product_id,
-            product_name=item.product.name,
-            unit_price=item.product.price,
-            quantity=item.quantity
-        ))
-        db.session.delete(item)
-
-    db.session.commit()
-    flash("Order placed successfully.", "success")
-    return redirect(url_for('order_detail', order_id=order.id))
 
 
 @app.route('/orders')
@@ -887,6 +951,159 @@ def vendor_delete_sale(sale_id):
     db.session.commit()
     flash("Sale entry removed.", "info")
     return redirect(url_for('vendor_profile'))
+
+#===============================================Order Status (Vendor)===================================================================
+
+@app.route('/vendor/orders')
+@vendor_required
+def vendor_orders():
+    order_ids = db.session.query(OrderItem.order_id).join(Product).filter(
+        Product.vendor_id == current_user.id
+    ).distinct().all()
+    order_ids = [o[0] for o in order_ids]
+
+    orders_list = Order.query.filter(Order.id.in_(order_ids)).order_by(Order.created_at.desc()).all()
+    return render_template('vendor_orders.html', orders=orders_list)
+
+
+@app.route('/vendor/orders/<int:order_id>/status', methods=['POST'])
+@vendor_required
+def vendor_update_order_status(order_id):
+    order = Order.query.get_or_404(order_id)
+    new_status = request.form.get('status')
+
+    if new_status not in ('shipped', 'delivered', 'cancelled'):
+        flash("Invalid status.", "error")
+        return redirect(url_for('vendor_orders'))
+
+    order.status = new_status
+    db.session.commit()
+
+    send_order_email(order, new_status)
+    flash(f"Order marked as {new_status}.", "success")
+    return redirect(url_for('vendor_orders'))
+
+#===============================================Checkout & Payment===================================================================
+
+@app.route('/checkout', methods=['GET', 'POST'])
+@login_required
+def checkout():
+    items = CartItem.query.filter_by(user_id=current_user.id).all()
+
+    if not items:
+        flash("Your bag is empty.", "error")
+        return redirect(url_for('cart'))
+
+    total = sum(item.product.price * item.quantity for item in items if item.product)
+    saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc()).all()
+
+    if request.method == 'GET':
+        return render_template('checkout.html', items=items, total=total, saved_addresses=saved_addresses)
+
+    address_id = request.form.get('address_id')
+
+    if address_id == 'new':
+        shipping_name = request.form.get('shipping_name')
+        shipping_address = request.form.get('shipping_address')
+        shipping_phone = request.form.get('shipping_phone')
+
+        if not shipping_name or not shipping_address or not shipping_phone:
+            flash("Please fill in all shipping details.", "error")
+            return render_template('checkout.html', items=items, total=total, saved_addresses=saved_addresses)
+
+        if request.form.get('save_address') == 'on':
+            if not saved_addresses:  # first address automatically becomes default
+                db.session.add(Address(user_id=current_user.id, full_name=shipping_name, phone=shipping_phone, address_line=shipping_address, is_default=True))
+            else:
+                db.session.add(Address(user_id=current_user.id, full_name=shipping_name, phone=shipping_phone, address_line=shipping_address))
+            db.session.commit()
+    else:
+        address = Address.query.get_or_404(address_id)
+        if address.user_id != current_user.id:
+            flash("Invalid address selected.", "error")
+            return redirect(url_for('checkout'))
+        shipping_name = address.full_name
+        shipping_address = address.address_line
+        shipping_phone = address.phone
+
+    order = Order(
+        user_id=current_user.id,
+        total_amount=total,
+        status='pending_payment',
+        payment_status='pending',
+        shipping_name=shipping_name,
+        shipping_address=shipping_address,
+        shipping_phone=shipping_phone
+    )
+    db.session.add(order)
+    db.session.flush()
+
+    for item in items:
+        db.session.add(OrderItem(
+            order_id=order.id,
+            product_id=item.product_id,
+            product_name=item.product.name,
+            unit_price=item.product.price,
+            quantity=item.quantity
+        ))
+
+    razorpay_order = razorpay_client.order.create({
+        'amount': total * 100,
+        'currency': 'INR',
+        'receipt': f'order_{order.id}',
+        'payment_capture': 1
+    })
+    order.razorpay_order_id = razorpay_order['id']
+
+    db.session.commit()
+
+    return render_template(
+        'payment.html',
+        order=order,
+        razorpay_key_id=app.config['RAZORPAY_KEY_ID'],
+        razorpay_order_id=razorpay_order['id'],
+        amount=total * 100
+    )
+
+@app.route('/payment/verify', methods=['POST'])
+@login_required
+def payment_verify():
+    order_id = request.form.get('order_id')
+    razorpay_payment_id = request.form.get('razorpay_payment_id')
+    razorpay_order_id = request.form.get('razorpay_order_id')
+    razorpay_signature = request.form.get('razorpay_signature')
+
+    order = Order.query.get_or_404(order_id)
+    if order.user_id != current_user.id:
+        flash("You don't have permission to complete this order.", "error")
+        return redirect(url_for('cart'))
+
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature
+        })
+    except razorpay.errors.SignatureVerificationError:
+        order.payment_status = 'failed'
+        db.session.commit()
+        flash("Payment verification failed. Please try again.", "error")
+        return redirect(url_for('checkout'))
+
+    # Signature verified — payment is genuine, finalize the order
+    order.payment_status = 'paid'
+    order.status = 'placed'
+    order.razorpay_payment_id = razorpay_payment_id
+    db.session.commit()
+
+    # Clear the cart now that payment succeeded
+    CartItem.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+
+    send_order_email(order, 'placed')
+
+    flash("Payment successful. Your order has been placed.", "success")
+    return redirect(url_for('order_detail', order_id=order.id))
 
 
  #===============================================Home===================================================================

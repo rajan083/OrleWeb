@@ -253,6 +253,7 @@ button, .btn-save, .btn-tan {
 
 button:hover, .btn-save:hover {
     background-color: var(--cream);
+    color: var(--black);
 }
 
 .form-links {
@@ -1505,4 +1506,22 @@ footer {
     font-size: 13px;
     letter-spacing: 0.04em;
     padding: 10px 16px;
+}
+
+.nav-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.nav-avatar-initial {
+    background: var(--olive);
+    color: var(--cream);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

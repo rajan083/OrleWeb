@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Payment{% endblock %}
+{% block content %}
+<div class="form-wrapper">
+    <div class="form-card">
+        <h1>Complete Payment</h1>
+        <p class="onboarding-sub">Order #{{ order.id }} · ₹{{ "{:,}".format(order.total_amount) }}</p>
+        <button id="payButton" class="btn-save">Pay Now</button>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    document.getElementById('payButton').onclick = function () {
+        const options = {
+            key: "{{ razorpay_key_id }}",
+            amount: "{{ amount }}",
+            currency: "INR",
+            name: "ORLE",
+            description: "Order #{{ order.id }}",
+            order_id: "{{ razorpay_order_id }}",
+            handler: function (response) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('payment_verify') }}";
+
+                const fields = {
+                    order_id: "{{ order.id }}",
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature
+                };
+
+                for (const key in fields) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = fields[key];
+                    form.appendChild(input);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+            },
+            prefill: {
+                name: "{{ order.shipping_name }}",
+                contact: "{{ order.shipping_phone }}"
+            },
+            theme: { color: "#232320" }
+        };
+
+        const razorpayCheckout = new Razorpay(options);
+        razorpayCheckout.open();
+    };
+</script>
+{% endblock %}

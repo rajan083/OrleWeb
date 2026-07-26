@@ -18,3 +18,6 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME')
+    
+    RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+    RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
