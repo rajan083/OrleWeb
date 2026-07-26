@@ -1,16 +1,38 @@
 {% extends "base.html" %}
 
-{% block title %}Your profile{% endblock %}
+{% block title %}Your Profile{% endblock %}
 
 {% block content %}
 <div class="profile-page">
 
-    <div class="profile-header">
-        <div class="profile-avatar">{{ user.name[0]|upper }}</div>
+    <div class="profile-hero">
+        {% if user.profile_picture %}
+            <img src="{{ user.profile_picture }}" alt="{{ user.name }}" class="profile-avatar-lg">
+        {% else %}
+            <div class="profile-avatar-lg profile-avatar-initial-lg">{{ user.name[0]|upper }}</div>
+        {% endif %}
         <div>
             <h1>{{ user.name }}</h1>
-            <p class="onboarding-sub">{{ user.email }}</p>
+            <p class="onboarding-sub" style="margin:0;">{{ user.email }}</p>
+            {% if user.created_at %}
+                <p class="profile-member-since">Member since {{ user.created_at.strftime('%B %Y') }}</p>
+            {% endif %}
         </div>
+    </div>
+
+    <div class="profile-stats-row">
+        <a href="{{ url_for('orders') }}" class="profile-stat">
+            <strong>{{ order_count }}</strong>
+            <span>Order{{ 's' if order_count != 1 else '' }}</span>
+        </a>
+        <a href="{{ url_for('wishlist') }}" class="profile-stat">
+            <strong>{{ wishlist_count }}</strong>
+            <span>Wishlist</span>
+        </a>
+        <a href="{{ url_for('addresses') }}" class="profile-stat">
+            <strong>{{ address_count }}</strong>
+            <span>Address{{ 'es' if address_count != 1 else '' }}</span>
+        </a>
     </div>
 
     <div class="profile-card">
@@ -39,23 +61,34 @@
                 <div class="option-row"><span>Skin tone</span><strong>{{ profile.skin_tone }}</strong></div>
                 <div class="option-row"><span>Dressing for</span><strong>{{ profile.occasion }}</strong></div>
             </div>
+            <a href="{{ url_for('recommendations') }}" style="display:block; margin-top:16px;">
+                <button class="btn-save">See Your Recommendations</button>
+            </a>
         {% else %}
             <p class="onboarding-sub">You haven't completed your style profile yet.</p>
-            <a href="{{ url_for('onboarding') }}"><button class="btn-save">Complete your style profile</button></a>
+            <a href="{{ url_for('onboarding') }}"><button class="btn-save">Complete Your Style Profile</button></a>
         {% endif %}
     </div>
 
-    <div class="option-list">
-        <a href="{{ url_for('orders') }}" class="option-row" style="text-decoration:none;">
-            <span>My Orders</span>
-            <strong>→</strong>
-        </a>
-        <a href="{{ url_for('wishlist') }}" class="option-row" style="text-decoration:none;">
-            <span>Wishlist</span>
-            <strong>→</strong>
-        </a>
+    <div class="profile-card">
+        <div class="profile-card-head">
+            <h2>Quick Links</h2>
+        </div>
+        <div class="option-list">
+            <a href="{{ url_for('orders') }}" class="option-row profile-link-row">
+                <span>My Orders</span>
+                <span class="profile-link-arrow">→</span>
+            </a>
+            <a href="{{ url_for('wishlist') }}" class="option-row profile-link-row">
+                <span>Wishlist</span>
+                <span class="profile-link-arrow">→</span>
+            </a>
+            <a href="{{ url_for('addresses') }}" class="option-row profile-link-row">
+                <span>Saved Addresses</span>
+                <span class="profile-link-arrow">→</span>
+            </a>
+        </div>
     </div>
-
 
     <div class="profile-actions">
         <a href="{{ url_for('logout') }}"><button class="btn-outline">Log Out</button></a>

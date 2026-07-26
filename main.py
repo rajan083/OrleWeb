@@ -306,7 +306,18 @@ def onboarding():
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', user=current_user, profile=current_user.profile)
+    order_count = Order.query.filter_by(user_id=current_user.id).count()
+    wishlist_count = Wishlist.query.filter_by(user_id=current_user.id).count()
+    address_count = Address.query.filter_by(user_id=current_user.id).count()
+
+    return render_template(
+        'profile.html',
+        user=current_user,
+        profile=current_user.profile,
+        order_count=order_count,
+        wishlist_count=wishlist_count,
+        address_count=address_count
+    )
 
 
 @app.route('/profile/edit', methods=['GET', 'POST'])
@@ -463,7 +474,20 @@ def product_detail(product_id):
             product_id=product_id
         ).first() is not None
 
-    return render_template('product_detail.html', product=product, is_wishlisted=is_wishlisted)
+    related_products = (
+        Product.query
+        .filter(Product.category == product.category, Product.id != product.id)
+        .order_by(Product.created_at.desc())
+        .limit(4)
+        .all()
+    )
+
+    return render_template(
+        'product_detail.html',
+        product=product,
+        is_wishlisted=is_wishlisted,
+        related_products=related_products
+    )
 
 #===============================================Wishlist===================================================================
 
@@ -505,12 +529,14 @@ def cart():
 @login_required
 def cart_add(product_id):
     product = Product.query.get_or_404(product_id)
+    quantity = int(request.form.get('quantity') or 1)
+
     existing = CartItem.query.filter_by(user_id=current_user.id, product_id=product_id).first()
 
     if existing:
-        existing.quantity += 1
+        existing.quantity += quantity
     else:
-        db.session.add(CartItem(user_id=current_user.id, product_id=product_id, quantity=1))
+        db.session.add(CartItem(user_id=current_user.id, product_id=product_id, quantity=quantity))
 
     db.session.commit()
     flash(f"{product.name} added to your bag.", "success")

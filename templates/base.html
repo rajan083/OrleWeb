@@ -25,7 +25,7 @@
             <a href="{{ url_for('catalogue') }}">The Edit</a>
         </div>
 
-        <div class="nav-icons">
+       <div class="nav-icons">
             {% if current_user.is_authenticated %}
                 {% if current_user.is_vendor %}
                     <a href="{{ url_for('vendor_dashboard') }}">Dashboard</a>
@@ -36,6 +36,7 @@
                             <svg viewBox="0 0 24 24" class="chevron"><path d="M6 9l6 6 6-6"/></svg>
                         </button>
                         <div class="account-dropdown" id="accountDropdown">
+                            <a href="{{ url_for('vendor_orders') }}">Orders</a>
                             <a href="{{ url_for('vendor_profile') }}">Vendor Profile</a>
                             <a href="{{ url_for('logout') }}">Logout</a>
                         </div>
