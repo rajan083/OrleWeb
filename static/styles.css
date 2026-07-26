@@ -252,8 +252,7 @@ button, .btn-save, .btn-tan {
 }
 
 button:hover, .btn-save:hover {
-    color: var(--cream);
-    background-color: var(--olive);
+    background-color: var(--cream);
 }
 
 .form-links {
