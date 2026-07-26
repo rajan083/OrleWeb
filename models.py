@@ -21,6 +21,8 @@ class User(db.Model, UserMixin):
     
     profile = db.relationship('UserProfile', backref='user', uselist=False, cascade='all, delete-orphan')
     
+    cart_items = db.relationship('CartItem', backref='user', lazy=True)
+    
     is_vendor = False
     
     def get_id(self):

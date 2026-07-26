@@ -207,17 +207,24 @@ def login_google_callback():
     name = user_info.get('name', email.split('@')[0])
 
     user = User.query.filter_by(email=email).first()
+    is_new_user = False
 
     if not user:
         user = User(email=email, name=name, google_id=google_id, is_verified=True)
         db.session.add(user)
+        is_new_user = True
     elif not user.google_id:
         user.google_id = google_id
 
     db.session.commit()
     login_user(user)
-    flash(f"Welcome, {user.name}.", "success")
-    return redirect(url_for('onboarding'))
+
+    if is_new_user:
+        flash(f"Welcome to ORLE, {user.name}.", "success")
+        return redirect(url_for('onboarding'))
+    else:
+        flash(f"Welcome back, {user.name}.", "success")
+        return redirect(url_for('dashboard'))
 
 
  #===============================================Onboarding===================================================================
@@ -299,15 +306,19 @@ def dashboard():
     all_products = Product.query.order_by(Product.created_at.desc()).all()
 
     ranked = []
-    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False) and current_user.profile:
-        ranked = recommend_products(current_user.profile, all_products, top_n=4)
+    wishlisted_ids = set()
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        if current_user.profile:
+            ranked = recommend_products(current_user.profile, all_products, top_n=4)
+        wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
 
     return render_template(
         'dashboard.html',
         offers=offers,
         latest_products=latest_products,
         all_products=all_products,
-        ranked=ranked
+        ranked=ranked,
+        wishlisted_ids=wishlisted_ids
     )
 
  #===============================================Catalogue===================================================================
@@ -324,14 +335,25 @@ def catalogue():
     categories = db.session.query(Product.category).distinct().all()
     categories = [c[0] for c in categories]
 
-    return render_template('catalogue.html', products=products, categories=categories, active_category=category)
+    wishlisted_ids = set()
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
+
+    return render_template('catalogue.html', products=products, categories=categories, active_category=category, wishlisted_ids=wishlisted_ids)
 
 
 @app.route('/catalogue/<int:product_id>')
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
-    return render_template('product_detail.html', product=product)
 
+    is_wishlisted = False
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        is_wishlisted = Wishlist.query.filter_by(
+            user_id=current_user.id,
+            product_id=product_id
+        ).first() is not None
+
+    return render_template('product_detail.html', product=product, is_wishlisted=is_wishlisted)
 
 #===============================================Wishlist===================================================================
 
@@ -494,8 +516,9 @@ def recommendations():
 
     all_products = Product.query.all()
     ranked = recommend_products(profile, all_products, top_n=12)
+    wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
 
-    return render_template('recommendations.html', ranked=ranked)
+    return render_template('recommendations.html', ranked=ranked, wishlisted_ids=wishlisted_ids)
 
  #===============================================Logout===================================================================
 
@@ -870,9 +893,37 @@ def vendor_delete_sale(sale_id):
 
 @app.route('/')
 def home():
-    return render_template("home.html")
+    best_sellers = Product.query.order_by(Product.created_at.desc()).limit(5).all()
+    new_arrivals = Product.query.order_by(Product.created_at.desc()).limit(2).all()
+    offer = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).first()
+    categories = db.session.query(Product.category).distinct().limit(3).all()
+    categories = [c[0] for c in categories]
 
+    carousel_products = (
+        Product.query
+        .filter(Product.image_url.isnot(None), Product.vendor_id.isnot(None))
+        .order_by(Product.created_at.desc())
+        .limit(4)
+        .all()
+    )
+    if not carousel_products:
+        carousel_products = (
+            Product.query
+            .filter(Product.image_url.isnot(None))
+            .order_by(Product.created_at.desc())
+            .limit(4)
+            .all()
+        )
 
+    return render_template(
+        'home.html',
+        best_sellers=best_sellers,
+        new_arrivals=new_arrivals,
+        offer=offer,
+        categories=categories,
+        carousel_products=carousel_products
+    )
+    
  #===============================================MAIN===================================================================
 
 if __name__ == '__main__':

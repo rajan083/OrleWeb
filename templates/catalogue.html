@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
 
 {% block title %}The Edit — ORLE{% endblock %}
 
@@ -16,13 +17,22 @@
     {% if products %}
         <div class="product-grid">
             {% for product in products %}
-                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
-                    <div class="product-card-body">
-                        <h3>{{ product.name }}</h3>
-                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                    </div>
-                </a>
+                <div class="product-card">
+                    {% if current_user.is_authenticated and not current_user.is_vendor %}
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h3>{{ product.name }}</h3>
+                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                        </div>
+                    </a>
+                </div>
             {% endfor %}
         </div>
     {% else %}

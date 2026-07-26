@@ -1,40 +1,130 @@
 {% extends "base.html" %}
 
-{% block title %}ORLE — Tailored for the modern man{% endblock %}
+{% block title %}ORLE — Crafted for Presence{% endblock %}
 
 {% block content %}
 
-<div class="carousel-wrapper">
-    <div class="carousel" id="heroCarousel">
-        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=1400&q=80');"></div>
-        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1400&q=80');"></div>
-        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1622519407650-3df9883f76a5?w=1400&q=80');"></div>
-        <div class="carousel-slide" style="background-image:url('https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1400&q=80');"></div>
-    </div>
-    <div class="carousel-dots" id="carouselDots"></div>
-</div>
-
-<section class="intro-section">
-    <h1>Dressed for the room you're walking into</h1>
-    <p>ORLE builds a style profile from your body type, your skin tone, and the occasion — then
-        recommends formalwear that's actually made to fit, not just sized to fit. Suits, sherwanis,
-        tuxedos, and tailoring, chosen for you, not just shown to you.</p>
-    <a href="{{ url_for('login') }}"><button class="btn-tan">Get Started</button></a>
+<section class="brand-hero">
+    <div class="brand-hero-wordmark">ORLÉ</div>
+    <p class="brand-hero-tagline">Crafted for Presence</p>
+    <p class="brand-hero-sub">Men's Fashion</p>
 </section>
 
-<section class="feature-strip">
-    <div class="feature">
-        <h3>01</h3>
-        <p>Tell us your body type, skin tone, and the occasion you're dressing for.</p>
+<div class="carousel-wrapper">
+    {% if carousel_products %}
+    <div class="carousel" id="heroCarousel">
+        {% for product in carousel_products %}
+        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="carousel-slide" style="background-image:url('{{ product.image_url | product_image }}');">
+            <div class="carousel-slide-label">{{ product.name }}</div>
+        </a>
+        {% endfor %}
     </div>
-    <div class="feature">
-        <h3>02</h3>
-        <p>We match you against pieces built for your exact silhouette.</p>
+    <div class="carousel-dots" id="carouselDots"></div>
+    {% endif %}
+</div>
+
+<div class="trust-strip">
+    <span>TAILORING</span>
+    <span>CRAFTSMANSHIP</span>
+    <span>PERSONAL FIT</span>
+    <span>TIMELESS STYLE</span>
+    <span>PRESENCE</span>
+</div>
+
+<section class="mission-section">
+    <h2>ORLÉ redefines men's luxury by combining refined craftsmanship with personalised style curation, effortless luxury, and timeless value.</h2>
+
+    <div class="mission-grid">
+        <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=500&q=80" alt="">
+        <div class="mission-copy">
+            <p>Every collection is carefully curated with premium fabrics, refined tailoring, and versatile essentials that transition seamlessly from everyday wear to elevated occasions.</p>
+            <a href="{{ url_for('onboarding') if current_user.is_authenticated else url_for('login') }}">
+                <button class="btn-tan">Create Style Profile</button>
+            </a>
+        </div>
+        <img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?w=500&q=80" alt="">
     </div>
-    <div class="feature">
-        <h3>03</h3>
-        <p>Shop with confidence — every recommendation comes with a fit note.</p>
+</section>
+
+{% if best_sellers %}
+<section class="dashboard-section">
+    <div class="section-head">
+        <h2>Best Sellers</h2>
+        <a href="{{ url_for('catalogue') }}">View all →</a>
     </div>
+    <div class="scroll-row">
+        {% for product in best_sellers %}
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="scroll-card">
+                <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                <div class="product-card-body">
+                    <h4>{{ product.name }}</h4>
+                    <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if new_arrivals|length >= 2 %}
+<section class="arrivals-spread">
+    <div class="section-head" style="max-width:1100px; margin:0 auto 24px; padding:0 20px;">
+        <h2>New Arrivals</h2>
+        <a href="{{ url_for('catalogue') }}">View all →</a>
+    </div>
+    <div class="spread-grid">
+        {% for product in new_arrivals %}
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="spread-item">
+                <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                <span class="spread-label">{{ product.name }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if categories %}
+<section class="category-discovery">
+    {% for cat in categories %}
+        <div class="category-row">
+            <h3>{{ cat|replace('_', ' ')|title }}</h3>
+            <a href="{{ url_for('catalogue', category=cat) }}"><button class="btn-outline" style="width:auto; padding:12px 24px;">Discover Collection</button></a>
+        </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+{% if offer %}
+<section class="sale-banner" style="background-image:linear-gradient(180deg, rgba(20,20,18,0.1), rgba(20,20,18,0.55)), url('{{ offer.image_url | product_image }}');">
+    <div class="sale-banner-content">
+        <h2>{{ offer.title }}</h2>
+        {% if offer.subtitle %}<p>{{ offer.subtitle }}</p>{% endif %}
+        <a href="{{ offer.link_url or url_for('catalogue') }}"><button class="btn-tan">Discover Collection</button></a>
+    </div>
+</section>
+{% endif %}
+
+<section class="testimonial-section">
+    <p class="testimonial-eyebrow">Customer Reviews. They Love Us.</p>
+    <blockquote>"I needed a formal outfit for a wedding and didn't want to browse for hours. ORLE recommended a few pieces that worked together perfectly. Everything fit right and looked premium."</blockquote>
+    — A recent customer
+</section>
+
+<section class="wordmark-banner">
+    <div class="wordmark-banner-text">ORLÉ</div>
+    <p>Men's Fashion</p>
+</section>
+
+<section class="newsletter-section">
+    <div>
+        <h3>Subscribe to Our Newsletter</h3>
+        <p>Stay updated with our latest collections, exclusive offers, and fashion inspiration delivered straight to your inbox.</p>
+    </div>
+    <form class="newsletter-form">
+        <input type="text" placeholder="Name" required>
+        <input type="email" placeholder="Email" required>
+        <button type="submit">Subscribe</button>
+    </form>
 </section>
 
 <script>

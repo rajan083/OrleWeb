@@ -45,6 +45,18 @@
         {% endif %}
     </div>
 
+    <div class="option-list">
+        <a href="{{ url_for('orders') }}" class="option-row" style="text-decoration:none;">
+            <span>My Orders</span>
+            <strong>→</strong>
+        </a>
+        <a href="{{ url_for('wishlist') }}" class="option-row" style="text-decoration:none;">
+            <span>Wishlist</span>
+            <strong>→</strong>
+        </a>
+    </div>
+
+
     <div class="profile-actions">
         <a href="{{ url_for('logout') }}"><button class="btn-outline">Log Out</button></a>
         <a href="{{ url_for('delete_account') }}" class="danger-link">Delete my account</a>

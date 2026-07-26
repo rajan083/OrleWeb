@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
 {% block title %}Recommended for you{% endblock %}
 {% block content %}
 <div class="dashboard-section">
@@ -6,16 +7,28 @@
         <h2>Recommended for You</h2>
     </div>
 
-    <div class="product-grid">
-        {% for product, score, breakdown in ranked %}
-                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
-                    <div class="product-card-body">
-                    <h4>{{ product.name }}</h4>
-                    <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                    <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
+    {% if ranked %}
+        <div class="product-grid">
+            {% for product, score, breakdown in ranked %}
+                <div class="product-card">
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h4>{{ product.name }}</h4>
+                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                            <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
+                        </div>
+                    </a>
                 </div>
-            </a>
-        {% endfor %}
-    </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">Complete your style profile to see recommendations.</p>
+    {% endif %}
 </div>
 {% endblock %}

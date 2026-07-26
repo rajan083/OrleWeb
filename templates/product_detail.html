@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
 
 {% block title %}{{ product.name }} — ORLE{% endblock %}
 
 {% block content %}
 <div class="product-detail">
-    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">  
+    <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}" class="product-detail-img">
+
     <div class="product-detail-info">
         <h1>{{ product.name }}</h1>
         <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
@@ -16,14 +18,25 @@
             </div>
         {% endif %}
 
-        <form action="{{ url_for('cart_add', product_id=product.id) }}" method="POST" style="display:inline;">
-            <button type="submit" class="btn-save">Add to Bag</button>
-        </form>
-        <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST" style="display:inline;">
-            <button type="submit" class="btn-outline">♡ Wishlist</button>
-        </form>
+        <div class="detail-actions">
+            <form action="{{ url_for('cart_add', product_id=product.id) }}" method="POST" style="flex:1;">
+                <button type="submit" class="btn-bag">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M3.74157 18.5545C4.94119 20 7.17389 20 11.6393 20H12.3605C16.8259 20 19.0586 20 20.2582 18.5545M3.74157 18.5545C2.54194 17.1091 2.9534 14.9146 3.77633 10.5257C4.36155 7.40452 4.65416 5.84393 5.76506 4.92196M3.74157 18.5545C3.74156 18.5545 3.74157 18.5545 3.74157 18.5545ZM20.2582 18.5545C21.4578 17.1091 21.0464 14.9146 20.2235 10.5257C19.6382 7.40452 19.3456 5.84393 18.2347 4.92196M20.2582 18.5545C20.2582 18.5545 20.2582 18.5545 20.2582 18.5545ZM18.2347 4.92196C17.1238 4 15.5361 4 12.3605 4H11.6393C8.46374 4 6.87596 4 5.76506 4.92196M18.2347 4.92196C18.2347 4.92196 18.2347 4.92196 18.2347 4.92196ZM5.76506 4.92196C5.76506 4.92196 5.76506 4.92196 5.76506 4.92196Z" stroke-width="1.5"/>
+                        <path opacity="0.5" d="M9.1709 8C9.58273 9.16519 10.694 10 12.0002 10C13.3064 10 14.4177 9.16519 14.8295 8" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    Add to Bag
+                </button>            
+            </form>
+            <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                <button type="submit" class="btn-wishlist {{ 'active' if is_wishlisted else '' }}">
+                    {{ heart_icon() }}
+                    Wishlist
+                </button>
+            </form>
+        </div>
 
-        <a href="{{ url_for('catalogue') }}">← Back to The Edit</a>
+        <a href="{{ url_for('catalogue') }}" style="display:inline-block; margin-top:20px; font-size:13px; color:var(--grey);">← Back to The Edit</a>
     </div>
 </div>
 {% endblock %}

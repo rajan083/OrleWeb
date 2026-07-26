@@ -3,19 +3,43 @@
 {% block title %}Your Orders{% endblock %}
 {% block content %}
 <div class="dashboard-section">
-    <h2>Your Orders</h2>
+    <div class="section-head">
+        <h2>Your Orders</h2>
+    </div>
+
     {% if orders %}
-        {% for order in orders %}
-        <a href="{{ url_for('order_detail', order_id=order.id) }}" class="profile-card" style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <strong>Order #{{ order.id }}</strong>
-                <p class="onboarding-sub" style="margin:0;">{{ order.created_at.strftime('%d %b %Y') }} · {{ order.status|title }}</p>
-            </div>
-            <span>₹{{ "{:,}".format(order.total_amount) }}</span>
-        </a>
-        {% endfor %}
+        <div class="orders-list">
+            {% for order in orders %}
+            <a href="{{ url_for('order_detail', order_id=order.id) }}" class="order-row">
+                <img src="{{ order.items[0].product.image_url | product_image if order.items and order.items[0].product else url_for('static', filename='img/placeholder.png') }}" alt="" class="order-thumb">
+
+                <div class="order-row-main">
+                    <div class="order-row-top">
+                        <strong>Order #{{ order.id }}</strong>
+                        <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
+                    </div>
+                    <p class="onboarding-sub" style="margin:2px 0 0;">
+                        {{ order.created_at.strftime('%d %b %Y') }} ·
+                        {{ order.items|length }} item{{ 's' if order.items|length != 1 else '' }}
+                    </p>
+                    <p class="order-row-items">
+                        {% for item in order.items[:3] %}
+                            {{ item.product_name }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                        {% if order.items|length > 3 %} + {{ order.items|length - 3 }} more{% endif %}
+                    </p>
+                </div>
+
+                <div class="order-row-total">
+                    <span>₹{{ "{:,}".format(order.total_amount) }}</span>
+                    <svg viewBox="0 0 24 24" class="order-chevron"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
     {% else %}
         <p class="onboarding-sub">You haven't placed any orders yet.</p>
+        <a href="{{ url_for('catalogue') }}"><button class="btn-save" style="width:auto; padding:12px 24px;">Browse The Edit</button></a>
     {% endif %}
 </div>
 {% endblock %}

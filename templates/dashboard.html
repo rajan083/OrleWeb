@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
 
 {% block title %}ORLE{% endblock %}
 
@@ -8,7 +9,7 @@
 <div class="offers-strip">
     {% for offer in offers %}
         <a href="{{ offer.link_url or '#' }}" class="offer-card">
-            <img src="{{ offer.image_url }}" alt="{{ offer.title }}">
+            <img src="{{ offer.image_url | product_image }}" alt="{{ offer.title }}">
             <div class="offer-overlay">
                 <h3>{{ offer.title }}</h3>
                 {% if offer.subtitle %}<p>{{ offer.subtitle }}</p>{% endif %}
@@ -18,30 +19,32 @@
 </div>
 {% endif %}
 
-{% if current_user.is_authenticated and not current_user.is_vendor and current_user.profile %}
+{% if ranked %}
 <div class="dashboard-section" style="padding-top:20px;">
     <div class="section-head">
         <h2>Recommended for You</h2>
         <a href="{{ url_for('recommendations') }}">See all →</a>
     </div>
     <p class="onboarding-sub">Based on your style profile.</p>
-        {% if recommended %}
-        <div class="product-grid">
+    <div class="product-grid">
         {% for product, score, breakdown in ranked %}
-            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
-                <div class="product-card-body">
-                    <h4>{{ product.name }}</h4>
-                    <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                    <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
-                </div>
-            </a>
+            <div class="product-card">
+                <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                    <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                        {{ heart_icon() }}
+                    </button>
+                </form>
+                <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                    <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h4>{{ product.name }}</h4>
+                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                        <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
+                    </div>
+                </a>
+            </div>
         {% endfor %}
-        </div>
-    {% else %}
-     <p class="onboarding-sub">We have nothing based on your profile.</p>
-    {% endif %}
-
+    </div>
 </div>
 {% endif %}
 
@@ -54,13 +57,22 @@
     {% if latest_products %}
         <div class="product-grid">
             {% for product in latest_products %}
-                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
-                    <div class="product-card-body">
-                        <h3>{{ product.name }}</h3>
-                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                    </div>
-                </a>
+                <div class="product-card">
+                    {% if current_user.is_authenticated and not current_user.is_vendor %}
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h3>{{ product.name }}</h3>
+                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                        </div>
+                    </a>
+                </div>
             {% endfor %}
         </div>
     {% else %}
@@ -76,13 +88,22 @@
     {% if all_products %}
         <div class="product-grid">
             {% for product in all_products %}
-                <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-card">
-                    <img src="{{ url_for('static', filename=product.image_url) }}" alt="{{ product.name }}" class="product-detail-img">
-                    <div class="product-card-body">
-                        <h3>{{ product.name }}</h3>
-                        <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                    </div>
-                </a>
+                <div class="product-card">
+                    {% if current_user.is_authenticated and not current_user.is_vendor %}
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h3>{{ product.name }}</h3>
+                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                        </div>
+                    </a>
+                </div>
             {% endfor %}
         </div>
     {% else %}
