@@ -1748,3 +1748,21 @@ footer {
         gap: 20px;
     }
 }
+.nav-vault-link {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.nav-vault-link svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--charcoal);
+    fill: none;
+    stroke-width: 3;
+    transition: stroke 0.2s;
+}
+
+.nav-vault-link:hover svg {
+    stroke: var(--olive);
+}
