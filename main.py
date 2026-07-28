@@ -608,7 +608,28 @@ def recommendations():
     ranked = recommend_products(profile, all_products, top_n=12)
     wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
 
-    return render_template('recommendations.html', ranked=ranked, wishlisted_ids=wishlisted_ids)
+    return render_template('recommendations.html', ranked=ranked, wishlisted_ids=wishlisted_ids, profile=profile)
+
+
+@app.route('/recommendations/update', methods=['POST'])
+@login_required
+def recommendations_update():
+    profile = current_user.profile
+    if not profile:
+        return {"error": "No style profile found."}, 400
+
+    profile.age_group = request.form.get('age_group', profile.age_group)
+    profile.height_range = request.form.get('height_range', profile.height_range)
+    profile.body_type = request.form.get('body_type', profile.body_type)
+    profile.skin_tone = request.form.get('skin_tone', profile.skin_tone)
+    profile.occasion = request.form.get('occasion', profile.occasion)
+    db.session.commit()
+
+    all_products = Product.query.all()
+    ranked = recommend_products(profile, all_products, top_n=12)
+    wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
+
+    return render_template('_recommendation_grid.html', ranked=ranked, wishlisted_ids=wishlisted_ids)
 
  #===============================================Logout===================================================================
 

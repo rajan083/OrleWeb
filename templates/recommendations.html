@@ -1,34 +1,125 @@
 {% extends "base.html" %}
-{% from "_icons.html" import heart_icon %}
 {% block title %}Recommended for you{% endblock %}
 {% block content %}
 <div class="dashboard-section">
     <div class="section-head">
         <h2>Recommended for You</h2>
+        <button type="button" class="text-link" id="openPrefsBtn" style="background:none; border:none; cursor:pointer; width:auto; padding:0; text-transform:none; font-size:13px;">
+            Adjust Preferences
+        </button>
     </div>
 
-    {% if ranked %}
-        <div class="product-grid">
-            {% for product, score, breakdown in ranked %}
-                <div class="product-card">
-                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
-                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
-                            {{ heart_icon() }}
-                        </button>
-                    </form>
-                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
-                        <div class="product-card-body">
-                            <h4>{{ product.name }}</h4>
-                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                            <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
-                        </div>
-                    </a>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="onboarding-sub">Complete your style profile to see recommendations.</p>
-    {% endif %}
+    <div id="recommendationGrid">
+        {% include "_recommendation_grid.html" %}
+    </div>
 </div>
+
+<div class="prefs-modal-backdrop" id="prefsBackdrop">
+    <div class="prefs-modal">
+        <div class="prefs-modal-head">
+            <h2 style="margin:0;">Adjust Your Preferences</h2>
+            <button type="button" class="prefs-modal-close" id="closePrefsBtn">&times;</button>
+        </div>
+
+        <p class="onboarding-sub">Provide only the information you feel comfortable sharing.</p>
+
+        <form id="prefsForm">
+
+            <h2>Select your age group</h2>
+            <div class="option-list">
+                {% for value, label in [('18-25','18 - 25'), ('26-34','26 - 34'), ('35-43','35 - 43'), ('44-52','44 - 52'), ('53-60','53 - 60'), ('60+','older')] %}
+                <label class="option-row">
+                    <input type="radio" name="age_group" value="{{ value }}" {{ 'checked' if profile.age_group == value else '' }} required> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <h2>Select your height range</h2>
+            <div class="option-list">
+                {% for value, label in [('122-152','122 - 152 cm (4 - 5 ft.)'), ('153-182','153 - 182 cm (5 - 6 ft.)'), ('183-213','183 - 213 cm (6 - 7 ft.)'), ('213+','Above 213 cm')] %}
+                <label class="option-row">
+                    <input type="radio" name="height_range" value="{{ value }}" {{ 'checked' if profile.height_range == value else '' }} required> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <h2>What is your body type?</h2>
+            <div class="body-type-grid">
+                {% for value, label in [('slim','Slim'), ('athletic','Athletic'), ('average','Average'), ('broad','Broad')] %}
+                <label class="body-type-card">
+                    <input type="radio" name="body_type" value="{{ value }}" {{ 'checked' if profile.body_type == value else '' }} required>
+                    <img src="{{ url_for('static', filename='img/body-' + value + '.svg') }}" alt="{{ label }}">
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <h2>What's your skin tone?</h2>
+            <div class="option-list">
+                {% for value, label, color in [('fair','Fair','#F3DECB'), ('light','Light','#E8B98F'), ('medium','Medium','#B4834A'), ('tan','Tan','#8A5A32'), ('deep','Deep','#4A3225')] %}
+                <label class="option-row swatch-row">
+                    <input type="radio" name="skin_tone" value="{{ value }}" {{ 'checked' if profile.skin_tone == value else '' }} required>
+                    <span class="swatch" style="background:{{ color }};"></span> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <h2>You want clothes for...?</h2>
+            <div class="option-list">
+                {% for value, label in [('any','Any occasion'), ('home','Home'), ('wedding','Wedding ceremony'), ('date','Date'), ('party','Party'), ('business','Business'), ('travel','Trip and travel'), ('workout','Workout'), ('festival','Festival'), ('beach','Beach')] %}
+                <label class="option-row">
+                    <input type="radio" name="occasion" value="{{ value }}" {{ 'checked' if profile.occasion == value else '' }} required> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <h2>What's your undertone?</h2>
+            <div class="option-list">
+                {% for value, label in [('warm','Warm (gold jewelry looks better on me)'), ('cool','Cool (silver jewelry looks better on me)'), ('neutral','Not sure / neutral')] %}
+                <label class="option-row">
+                    <input type="radio" name="undertone" value="{{ value }}" {{ 'checked' if profile.undertone == value else '' }} required> {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-save">Update Recommendations</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const openBtn = document.getElementById('openPrefsBtn');
+const closeBtn = document.getElementById('closePrefsBtn');
+const backdrop = document.getElementById('prefsBackdrop');
+const form = document.getElementById('prefsForm');
+const grid = document.getElementById('recommendationGrid');
+
+openBtn.addEventListener('click', () => backdrop.classList.add('open'));
+closeBtn.addEventListener('click', () => backdrop.classList.remove('open'));
+backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.classList.remove('open');
+});
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Updating...';
+    submitBtn.disabled = true;
+
+    const response = await fetch("{{ url_for('recommendations_update') }}", {
+        method: 'POST',
+        body: new FormData(form)
+    });
+
+    if (response.ok) {
+        grid.innerHTML = await response.text();
+        backdrop.classList.remove('open');
+    } else {
+        alert('Something went wrong updating your preferences.');
+    }
+
+    submitBtn.textContent = 'Update Recommendations';
+    submitBtn.disabled = false;
+});
+</script>
 {% endblock %}

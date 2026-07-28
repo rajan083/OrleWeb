@@ -6,6 +6,35 @@
     <h1>Order #{{ order.id }}</h1>
     <p class="onboarding-sub">Placed {{ order.created_at.strftime('%d %b %Y') }} · Status: {{ order.status|title }}</p>
 
+    {% if order.status == 'cancelled' %}
+        <div class="tracker-cancelled">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            This order was cancelled. If a payment was made, it will be refunded within 5-7 business days.
+        </div>
+    {% elif order.status == 'pending_payment' %}
+        <div class="tracker-pending">
+            Waiting on payment confirmation for this order.
+        </div>
+    {% else %}
+        {% set steps = ['placed', 'shipped', 'delivered'] %}
+        {% set current_index = steps.index(order.status) if order.status in steps else 0 %}
+        <div class="order-tracker">
+            {% for step in steps %}
+                <div class="tracker-step {% if loop.index0 < current_index %}done{% elif loop.index0 == current_index %}active{% endif %}">
+                    <div class="tracker-dot">
+                        {% if loop.index0 < current_index %}
+                            <svg viewBox="0 0 24 24" width="12" height="12"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {% endif %}
+                    </div>
+                    <span class="tracker-label">{{ step|title }}</span>
+                </div>
+                {% if not loop.last %}
+                    <div class="tracker-line {% if loop.index0 < current_index %}done{% endif %}"></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <div class="profile-card">
         {% for item in order.items %}
             <div class="option-row"><span>{{ item.product_name }} × {{ item.quantity }}</span><strong>₹{{ "{:,}".format(item.unit_price * item.quantity) }}</strong></div>

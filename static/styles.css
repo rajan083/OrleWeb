@@ -33,44 +33,6 @@ a {
 }
 
 /* ============ NAV ============ */
-/* DELETE this entire block — superseded by the second nav rule below it */
-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 48px;
-    background-color: var(--cream);
-    border-bottom: 1px solid var(--light-grey);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.wordmark-sm {
-    font-family: 'Fraunces', serif;
-    font-size: 20px;
-    letter-spacing: 0.06em;
-}
-
-.nav-links, .nav-icons {
-    display: flex;
-    gap: 28px;
-    align-items: center;
-}
-
-.nav-links a, .nav-icons a {
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    padding-bottom: 3px;
-    border-bottom: 1px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-}
-
-.nav-links a:hover, .nav-icons a:hover {
-    color: var(--olive);
-    border-bottom-color: var(--tan);
-}
-
 nav{
 
     display:flex;
@@ -84,6 +46,12 @@ nav{
     z-index:1000;
 }
 
+.wordmark-sm {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    letter-spacing: 0.06em;
+}
+
 .nav-container{
     display:flex;
     align-items:center;
@@ -94,6 +62,19 @@ nav{
     display:flex;
     align-items:center;
     gap:28px;
+}
+
+.nav-links a, .nav-icons a {
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    padding-bottom: 3px;
+    border-bottom: 1px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.nav-links a:hover, .nav-icons a:hover {
+    color: var(--olive);
+    border-bottom-color: var(--tan);
 }
 
 .menu-toggle {
@@ -811,21 +792,26 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ CAROUSEL ============ */
+
 .carousel-wrapper {
     width: 90%;
     max-width: 1200px;
     margin: 32px auto 0;
+    overflow: hidden;
 }
 
 .carousel {
     display: flex;
+    align-items: center;
+    gap: 16px;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
     -ms-overflow-style: none;
-    border-radius: 6px;
     height: 45vh;
     min-height: 320px;
     max-height: 520px;
+    padding: 0 7.5%; /* (100% - active slide width) / 2, keeps first/last slide centerable */
 }
 
 .carousel::-webkit-scrollbar {
@@ -837,11 +823,32 @@ button:hover, .btn-save:hover {
         scrollbar-width: none;
     }
 }
+
 .carousel-slide {
-    flex: 0 0 100%;
-    scroll-snap-align: start;
+    flex: 0 0 auto;
+    width: 75%;
+    height: 82%;
+    border-radius: 6px;
+    scroll-snap-align: center;
     background-size: cover;
     background-position: center;
+    transform: scale(0.86);
+    opacity: 0.5;
+    transition: transform 0.45s ease, opacity 0.45s ease, width 0.45s ease, height 0.45s ease;
+}
+
+.carousel-slide.adjacent {
+    opacity: 0.75;
+    transform: scale(0.94);
+}
+
+.carousel-slide.active {
+    width: 85%;
+    height: 100%;
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 16px 36px rgba(20, 20, 18, 0.25);
+    z-index: 2;
 }
 
 .carousel-dots {
@@ -872,6 +879,13 @@ button:hover, .btn-save:hover {
     .carousel {
         height: 42vh;
         min-height: 260px;
+        padding: 0 5%;
+    }
+    .carousel-slide {
+        width: 88%;
+    }
+    .carousel-slide.active {
+        width: 90%;
     }
 }
 
@@ -935,11 +949,6 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ FOOTER ============ */
-:root {
-    /* ... existing variables ... */
-    --footer-bg: #4a4e4a;  /* was #3A3A34 — now genuinely dark, closer to --black */
-}
-
 footer {
     background: var(--footer-bg);
     color: #FFFFFF;
@@ -963,7 +972,7 @@ footer {
 
 .footer-grid p {
     font-size: 13.5px;
-    color: #C9C7BF;  /* was --light-grey — brighter now for real contrast against dark bg */
+    color: #C9C7BF;
     margin-top: 12px;
     max-width: 280px;
     line-height: 1.7;
@@ -973,14 +982,14 @@ footer {
     font-size: 11.5px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--tan);  /* tan already reads well against dark — kept as-is */
+    color: var(--tan);
     margin-bottom: 18px;
     font-weight: 600;
 }
 
 .footer-col a {
     display: block;
-    color: #E8E6DE;  /* was --light-grey — bumped up significantly */
+    color: #E8E6DE;
     font-size: 13.5px;
     margin-bottom: 12px;
 }
@@ -1586,10 +1595,6 @@ footer {
     .order-row-items { white-space: normal; }
 }
 
-.carousel-slide {
-    position: relative;
-    display: block;
-}
 
 .carousel-slide-label {
     position: absolute;
@@ -1765,4 +1770,224 @@ footer {
 
 .nav-vault-link:hover svg {
     stroke: var(--olive);
+}
+
+/* ============ PREFERENCES MODAL ============ */
+.prefs-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 18, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.prefs-modal-backdrop.open {
+    display: flex;
+}
+
+.prefs-modal {
+    background: var(--cream);
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 32px;
+    border-radius: 6px;
+}
+
+.prefs-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.prefs-modal-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--grey);
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+}
+
+.prefs-modal-close:hover {
+    color: var(--charcoal);
+    background: none;
+}
+
+.prefs-modal h2 {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--olive);
+    margin: 22px 0 6px;
+}
+
+.prefs-modal .option-row {
+    padding: 10px 0;
+}
+
+.prefs-modal .onboarding-sub {
+    margin-bottom: 6px;
+}
+
+.prefs-modal .body-type-grid {
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.prefs-modal .body-type-card {
+    padding: 8px 4px;
+    font-size: 11px;
+}
+
+.prefs-modal .body-type-card img {
+    height: 64px;
+}
+
+.prefs-modal .swatch {
+    width: 22px;
+    height: 22px;
+}
+
+.prefs-modal .swatch-row {
+    gap: 12px;
+}
+
+.prefs-modal .form-error {
+    margin-bottom: 14px;
+}
+
+@media (max-width: 420px) {
+    .prefs-modal .body-type-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+}
+
+.prefs-modal .onboarding-sub {
+    margin-bottom: 20px;
+}
+
+.prefs-modal .body-type-grid {
+    gap: 8px;
+}
+
+.prefs-modal .body-type-card {
+    font-size: 11px;
+    padding: 8px 4px;
+}
+
+.prefs-modal .body-type-card img {
+    height: 70px;
+}
+
+.prefs-modal .swatch {
+    width: 22px;
+    height: 22px;
+}
+/* ============ ORDER TRACKER ============ */
+.order-tracker {
+    display: flex;
+    align-items: center;
+    margin: 28px 0 34px;
+}
+
+.tracker-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.tracker-dot {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--light-grey);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+
+.tracker-step.done .tracker-dot {
+    background: var(--olive);
+    border-color: var(--olive);
+}
+
+.tracker-step.active .tracker-dot {
+    border-color: var(--olive);
+    box-shadow: 0 0 0 4px rgba(92, 107, 74, 0.15);
+}
+
+.tracker-step.active .tracker-dot::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--olive);
+}
+
+.tracker-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--grey);
+    white-space: nowrap;
+}
+
+.tracker-step.done .tracker-label,
+.tracker-step.active .tracker-label {
+    color: var(--charcoal);
+    font-weight: 600;
+}
+
+.tracker-line {
+    flex: 1;
+    height: 2px;
+    background: var(--light-grey);
+    margin: 0 6px;
+    margin-bottom: 22px;
+    transition: background 0.2s;
+}
+
+.tracker-line.done {
+    background: var(--olive);
+}
+
+.tracker-cancelled {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--error-bg);
+    color: var(--error-text);
+    padding: 14px 16px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    margin: 24px 0;
+}
+
+.tracker-pending {
+    background: var(--off-white);
+    color: var(--charcoal);
+    padding: 14px 16px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    margin: 24px 0;
+}
+
+@media (max-width: 480px) {
+    .tracker-label { font-size: 10px; }
 }

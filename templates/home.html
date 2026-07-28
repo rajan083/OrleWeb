@@ -14,7 +14,9 @@
     {% if carousel_products %}
     <div class="carousel" id="heroCarousel">
         {% for product in carousel_products %}
-        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="carousel-slide" style="background-image:url('{{ product.image_url | product_image }}');">
+        <a href="{{ url_for('product_detail', product_id=product.id) }}"
+           class="carousel-slide{% if loop.index0 == 0 %} active{% endif %}"
+           style="background-image:url('{{ product.image_url | product_image }}');">
             <div class="carousel-slide-label">{{ product.name }}</div>
         </a>
         {% endfor %}
@@ -22,6 +24,7 @@
     <div class="carousel-dots" id="carouselDots"></div>
     {% endif %}
 </div>
+
 
 <div class="trust-strip">
     <span>TAILORING</span>
@@ -130,7 +133,7 @@
 <script>
   const track = document.getElementById('heroCarousel');
   const dotsContainer = document.getElementById('carouselDots');
-  const slides = track.querySelectorAll('.carousel-slide');
+  const slides = Array.from(track.querySelectorAll('.carousel-slide'));
   let current = 0;
 
   slides.forEach((_, i) => {
@@ -141,9 +144,23 @@
     dotsContainer.appendChild(dot);
   });
 
+  function updateSlideStates() {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === current);
+      slide.classList.toggle('adjacent', Math.abs(i - current) === 1);
+    });
+  }
+
+  function centerSlide(index) {
+    const slide = slides[index];
+    const offset = slide.offsetLeft - (track.clientWidth / 2) + (slide.clientWidth / 2);
+    track.scrollTo({ left: offset, behavior: 'smooth' });
+  }
+
   function goToSlide(index) {
-    current = index;
-    track.scrollTo({ left: track.clientWidth * index, behavior: 'smooth' });
+    current = (index + slides.length) % slides.length;
+    centerSlide(current);
+    updateSlideStates();
     updateDots();
   }
 
@@ -153,18 +170,9 @@
     });
   }
 
-  track.addEventListener('scroll', () => {
-    const index = Math.round(track.scrollLeft / track.clientWidth);
-    if (index !== current) {
-      current = index;
-      updateDots();
-    }
-  });
+  window.addEventListener('load', () => goToSlide(0));
 
-  setInterval(() => {
-    current = (current + 1) % slides.length;
-    goToSlide(current);
-  }, 5000);
+  setInterval(() => goToSlide(current + 1), 4000);
 </script>
 
 {% endblock %}
