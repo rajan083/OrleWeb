@@ -40,9 +40,9 @@ serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
 
 
-def send_verification_email(user):
+def send_verification_email(user, next_page=None):
     token = serializer.dumps(user.email, salt='email-verify')
-    link = url_for('verify_email', token=token, _external=True)
+    link = url_for('verify_email', token=token, next=next_page, _external=True)
     msg = Message(
         'Verify your ORLE account',
         recipients=[user.email],
@@ -131,6 +131,7 @@ def register():
     email = request.form.get('email')
     password = request.form.get('password')
     confirm_password = request.form.get('confirm_password')
+    next_page = request.args.get('next') or request.form.get('next')
 
     if not name or not email or not password or not confirm_password:
         flash("Please enter the required credentials.", "error")
@@ -143,7 +144,7 @@ def register():
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
         flash("This email is already registered. Try logging in instead.", "error")
-        return redirect(url_for('login'))
+        return redirect(url_for('login', next=next_page))
 
     new_user = User(name=name, email=email, phone_number=phone_number)
     new_user.set_password(password)
@@ -151,15 +152,15 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    send_verification_email(new_user)
+    send_verification_email(new_user, next_page)
     flash("Account created! Check your email to verify before logging in.", "success")
     return render_template('check_email.html', email=email)
-
 
  #===============================================Email Verification===================================================================
 
 @app.route('/verify/<token>')
 def verify_email(token):
+    next_page = request.args.get('next')
     try:
         email = serializer.loads(token, salt='email-verify', max_age=3600)
     except SignatureExpired:
@@ -172,12 +173,12 @@ def verify_email(token):
         return render_template('verify_result.html', success=False, message="No account found for this link.")
 
     if user.is_verified:
-        return render_template('verify_result.html', success=True, message="Your email is already verified — you can log in.")
+        return render_template('verify_result.html', success=True, message="Your email is already verified — you can log in.", next=next_page)
 
     user.is_verified = True
     db.session.commit()
 
-    return render_template('verify_result.html', success=True, message="Your email has been verified. You can now log in.")
+    return render_template('verify_result.html', success=True, message="Your email has been verified. You can now log in.", next=next_page)
 
 
  #===============================================Login================================================================
@@ -220,6 +221,7 @@ def login():
 @app.route('/login/google')
 def login_google():
     redirect_uri = url_for('login_google_callback', _external=True)
+    session['oauth_next'] = request.args.get('next')  # stash it — OAuth round-trip loses query params otherwise
     return google.authorize_redirect(redirect_uri)
 
 
@@ -252,15 +254,17 @@ def login_google_callback():
     db.session.commit()
     login_user(user)
 
+    next_page = session.pop('oauth_next', None)
+
     if is_new_user:
         flash(f"Welcome to ORLE, {user.name}.", "success")
-        return redirect(url_for('onboarding'))
+        return redirect(next_page or url_for('onboarding'))
     elif not user.profile:
         flash(f"Welcome back, {user.name}. Let's finish setting up your style profile.", "success")
-        return redirect(url_for('onboarding'))
+        return redirect(next_page or url_for('onboarding'))
     else:
         flash(f"Welcome back, {user.name}.", "success")
-        return redirect(url_for('dashboard'))
+        return redirect(next_page or url_for('dashboard'))
     
 
  #===============================================Onboarding===================================================================
@@ -673,6 +677,65 @@ def order_detail(order_id):
         flash("You don't have permission to view this order.", "error")
         return redirect(url_for('orders'))
     return render_template('order_detail.html', order=order)
+
+
+#===============================================Order Cancellation (Customer)===================================================================
+
+CANCELLABLE_STATUSES = ('pending_payment', 'placed')
+
+@app.route('/orders/<int:order_id>/cancel', methods=['POST'])
+@login_required
+def order_cancel(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    if order.user_id != current_user.id:
+        flash("You don't have permission to cancel this order.", "error")
+        return redirect(url_for('orders'))
+
+    if order.status not in CANCELLABLE_STATUSES:
+        flash(f"This order can no longer be cancelled — it's already {order.status}.", "error")
+        return redirect(url_for('order_detail', order_id=order.id))
+
+    # If payment was captured, attempt a refund before touching anything else.
+    # If the refund fails, we bail out entirely rather than cancelling an order
+    # whose money hasn't actually been returned.
+    if order.payment_status == 'paid' and order.razorpay_payment_id:
+        try:
+            razorpay_client.payment.refund(order.razorpay_payment_id, {
+                'amount': order.total_amount * 100,  # full refund, in paise
+                'speed': 'optimum',
+                'notes': {'reason': 'Customer-initiated cancellation', 'order_id': str(order.id)}
+            })
+        except razorpay.errors.BadRequestError as e:
+            flash(f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this cancellation.", "error")
+            return redirect(url_for('order_detail', order_id=order.id))
+        except Exception:
+            flash("Something went wrong initiating the refund. Please contact support — your order has not been cancelled.", "error")
+            return redirect(url_for('order_detail', order_id=order.id))
+
+        order.payment_status = 'refunded'
+
+    # Refund succeeded (or nothing was charged yet) — now restore stock and finalize.
+    for oi in order.items:
+        product = oi.product
+        if not product:
+            continue
+        if product.requires_size and oi.size:
+            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
+            if size_row:
+                size_row.stock_quantity += oi.quantity
+            else:
+                # size row was deleted since the order was placed (e.g. vendor removed that size) — recreate it
+                db.session.add(ProductSize(product_id=product.id, size=oi.size, stock_quantity=oi.quantity))
+        elif not product.requires_size:
+            product.stock_quantity += oi.quantity
+
+    order.status = 'cancelled'
+    db.session.commit()
+
+    send_order_email(order, 'cancelled')
+    flash("Your order has been cancelled." + (" A refund has been initiated and will reflect in 5-7 business days." if order.payment_status == 'refunded' else ""), "success")
+    return redirect(url_for('order_detail', order_id=order.id))
 
 
  #===============================================Recommendations===================================================================

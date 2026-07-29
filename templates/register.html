@@ -6,9 +6,9 @@
 
 <div class="form-wrapper">
     <div class="form-card">
-        <p>ALREADY A BUYER? <a href="{{ url_for('login') }}">SIGN IN</a></p>
+        <p>ALREADY A BUYER? <a href="{{ url_for('login', next=request.args.get('next')) }}">SIGN IN</a></p>
 
-        <form action="/register" method="POST">
+        <form action="{{ url_for('register', next=request.args.get('next')) }}" method="POST">
             <input type="text" name="name" placeholder="Your Name" id="Name" required>
             <input type="tel" name="phone_number" placeholder="Your Phone Number" id="Phone_Number">
             <input type="email" name="email" placeholder="name@domain.com" id="Email" required autocomplete="email">

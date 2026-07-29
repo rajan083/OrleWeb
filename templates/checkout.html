@@ -6,7 +6,10 @@
 
     <div class="profile-card">
         {% for item in items %}
-            <div class="option-row"><span>{{ item.product.name }} × {{ item.quantity }}</span><strong>₹{{ "{:,}".format(item.product.price * item.quantity) }}</strong></div>
+            <div class="option-row">
+                <span>{{ item.product.name }}{% if item.size %} <span class="onboarding-sub">(Size: {{ item.size }})</span>{% endif %} × {{ item.quantity }}</span>
+                <strong>₹{{ "{:,}".format(item.product.price * item.quantity) }}</strong>
+            </div>
         {% endfor %}
         <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(total) }}</strong></div>
     </div>
