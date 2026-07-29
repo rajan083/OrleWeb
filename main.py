@@ -8,7 +8,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -583,8 +583,55 @@ def wishlist_toggle(product_id):
 def cart():
     items = CartItem.query.filter_by(user_id=current_user.id).all()
     total = sum(item.product.price * item.quantity for item in items if item.product)
-    return render_template('cart.html', items=items, total=total)
 
+    discount = 0
+    coupon = None
+    coupon_code = session.get('coupon_code')
+    if coupon_code:
+        coupon = Coupon.query.filter_by(code=coupon_code).first()
+        if coupon:
+            valid, error = coupon.is_valid_for(total)
+            if valid:
+                discount = coupon.calculate_discount(total)
+            else:
+                session.pop('coupon_code', None)
+                coupon = None
+
+    final_total = total - discount
+    return render_template('cart.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon)
+
+
+@app.route('/cart/apply-coupon', methods=['POST'])
+@login_required
+def apply_coupon():
+    code = (request.form.get('coupon_code') or '').strip().upper()
+    items = CartItem.query.filter_by(user_id=current_user.id).all()
+    total = sum(item.product.price * item.quantity for item in items if item.product)
+
+    coupon = Coupon.query.filter_by(code=code).first()
+    if not coupon:
+        flash("Invalid coupon code.", "error")
+        session.pop('coupon_code', None)
+        return redirect(url_for('cart'))
+
+    valid, error = coupon.is_valid_for(total)
+    if not valid:
+        flash(error, "error")
+        session.pop('coupon_code', None)
+        return redirect(url_for('cart'))
+
+    session['coupon_code'] = coupon.code
+    discount = coupon.calculate_discount(total)
+    flash(f"Coupon applied — ₹{discount} off.", "success")
+    return redirect(url_for('cart'))
+
+
+@app.route('/cart/remove-coupon', methods=['POST'])
+@login_required
+def remove_coupon():
+    session.pop('coupon_code', None)
+    flash("Coupon removed.", "info")
+    return redirect(url_for('cart'))
 
 @app.route('/cart/add/<int:product_id>', methods=['POST'])
 @login_required
@@ -1270,14 +1317,30 @@ def checkout():
         return redirect(url_for('cart'))
 
     total = sum(item.product.price * item.quantity for item in items if item.product)
+    
+    discount = 0
+    coupon = None
+    coupon_code = session.get('coupon_code')
+    if coupon_code:
+        coupon = Coupon.query.filter_by(code=coupon_code).first()
+        if coupon:
+            valid, error = coupon.is_valid_for(total)
+            if valid:
+                discount = coupon.calculate_discount(total)
+            else:
+                coupon = None
+                session.pop('coupon_code', None)
+    final_total = total - discount
+
+    
     saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc()).all()
 
     if request.method == 'GET':
-        return render_template('checkout.html', items=items, total=total, saved_addresses=saved_addresses)
+        return render_template('checkout.html', items=items, final_total=final_total, saved_addresses=saved_addresses)
 
     address_id = request.form.get('address_id')
 
-    if address_id == 'new':
+    if not address_id or address_id == 'new':
         shipping_name = request.form.get('shipping_name')
         shipping_address = request.form.get('shipping_address')
         shipping_phone = request.form.get('shipping_phone')
@@ -1324,7 +1387,7 @@ def checkout():
         ))
 
     razorpay_order = razorpay_client.order.create({
-        'amount': total * 100,
+        'amount': final_total * 100,
         'currency': 'INR',
         'receipt': f'order_{order.id}',
         'payment_capture': 1
@@ -1338,7 +1401,7 @@ def checkout():
         order=order,
         razorpay_key_id=app.config['RAZORPAY_KEY_ID'],
         razorpay_order_id=razorpay_order['id'],
-        amount=total * 100
+        amount=final_total * 100
     )
 
 @app.route('/payment/verify', methods=['POST'])
@@ -1372,7 +1435,7 @@ def payment_verify():
     order.razorpay_payment_id = razorpay_payment_id
     db.session.commit()
 
-    # Clear the cart now that payment succeeded
+    # Decrement stock now that payment is confirmed
     for oi in order.items:
         product = oi.product
         if not product:
@@ -1383,6 +1446,14 @@ def payment_verify():
                 size_row.stock_quantity = max(size_row.stock_quantity - oi.quantity, 0)
         elif not product.requires_size:
             product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
+
+    # Record coupon usage now that the order is actually paid — not before,
+    # since a failed/abandoned payment shouldn't burn a redemption
+    if order.coupon_code:
+        coupon = Coupon.query.filter_by(code=order.coupon_code).first()
+        if coupon:
+            coupon.times_used += 1
+
     db.session.commit()
 
     # Clear the cart now that payment succeeded
@@ -1390,6 +1461,7 @@ def payment_verify():
     db.session.commit()
 
     send_order_email(order, 'placed')
+    session.pop('coupon_code', None)
 
     flash("Payment successful. Your order has been placed.", "success")
     return redirect(url_for('order_detail', order_id=order.id))
@@ -1491,6 +1563,69 @@ def admin_dashboard():
         recent_orders=recent_orders
     )
     
+    
+    #===================================== Add/Remove Coupon====================================
+    
+@app.route('/admin/coupons')
+@admin_required
+def admin_coupons():
+    coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
+    return render_template('admin_coupons.html', coupons=coupons)
+
+
+@app.route('/admin/coupons/add', methods=['GET', 'POST'])
+@admin_required
+def admin_add_coupon():
+    if request.method == 'GET':
+        return render_template('admin_coupon_form.html', coupon=None)
+
+    code = (request.form.get('code') or '').strip().upper()
+    discount_type = request.form.get('discount_type')
+    discount_value = int(request.form.get('discount_value') or 0)
+    min_order_amount = int(request.form.get('min_order_amount') or 0)
+    max_uses = request.form.get('max_uses')
+    expires_at = request.form.get('expires_at')
+
+    if not code or discount_type not in ('percent', 'flat') or discount_value <= 0:
+        flash("Please fill in a valid code, type, and discount value.", "error")
+        return render_template('admin_coupon_form.html', coupon=None)
+
+    if Coupon.query.filter_by(code=code).first():
+        flash("A coupon with this code already exists.", "error")
+        return render_template('admin_coupon_form.html', coupon=None)
+
+    coupon = Coupon(
+        code=code,
+        discount_type=discount_type,
+        discount_value=discount_value,
+        min_order_amount=min_order_amount,
+        max_uses=int(max_uses) if max_uses else None,
+        expires_at=datetime.strptime(expires_at, '%Y-%m-%d') if expires_at else None
+    )
+    db.session.add(coupon)
+    db.session.commit()
+    flash(f"Coupon {code} created.", "success")
+    return redirect(url_for('admin_coupons'))
+
+
+@app.route('/admin/coupons/<int:coupon_id>/toggle', methods=['POST'])
+@admin_required
+def admin_toggle_coupon(coupon_id):
+    coupon = Coupon.query.get_or_404(coupon_id)
+    coupon.is_active = not coupon.is_active
+    db.session.commit()
+    flash(f"Coupon {coupon.code} {'activated' if coupon.is_active else 'deactivated'}.", "info")
+    return redirect(url_for('admin_coupons'))
+
+
+@app.route('/admin/coupons/<int:coupon_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_coupon(coupon_id):
+    coupon = Coupon.query.get_or_404(coupon_id)
+    db.session.delete(coupon)
+    db.session.commit()
+    flash("Coupon deleted.", "info")
+    return redirect(url_for('admin_coupons'))
 
 #===============================================Search===================================================================
 

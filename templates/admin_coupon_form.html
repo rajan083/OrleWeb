@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}New Coupon — Admin{% endblock %}
+
+{% block content %}
+<div class="form-wrapper">
+    <div class="form-card">
+        <h1>New Coupon</h1>
+
+        <form method="POST">
+            <div class="field">
+                <label>Code</label>
+                <input type="text" name="code" placeholder="e.g. WELCOME10" required style="text-transform:uppercase;">
+            </div>
+
+            <div class="field">
+                <label>Discount Type</label>
+                <select name="discount_type" required>
+                    <option value="percent">Percentage off</option>
+                    <option value="flat">Flat amount off (₹)</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Discount Value</label>
+                <input type="number" name="discount_value" min="1" placeholder="e.g. 10" required>
+            </div>
+
+            <div class="field">
+                <label>Minimum Order Amount (₹)</label>
+                <input type="number" name="min_order_amount" min="0" placeholder="0" value="0">
+            </div>
+
+            <div class="field">
+                <label>Usage Limit (optional)</label>
+                <input type="number" name="max_uses" min="1" placeholder="Leave blank for unlimited">
+            </div>
+
+            <div class="field">
+                <label>Expiry Date (optional)</label>
+                <input type="date" name="expires_at">
+            </div>
+
+            <button type="submit" class="btn-save">Create Coupon</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

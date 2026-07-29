@@ -246,6 +246,9 @@ class Order(db.Model):
     shipping_address = db.Column(db.Text, nullable=False)
     shipping_phone = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    coupon_code = db.Column(db.String(30), nullable=True)
+    discount_amount = db.Column(db.Integer, default=0)
 
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
 
@@ -327,3 +330,33 @@ class ProductSize(db.Model):
     product = db.relationship('Product', backref=db.backref('sizes', cascade='all, delete-orphan'))
 
     __table_args__ = (db.UniqueConstraint('product_id', 'size', name='uq_product_size'),)
+    
+
+class Coupon(db.Model):
+    __tablename__ = 'coupons'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(30), unique=True, nullable=False)
+    discount_type = db.Column(db.String(10), nullable=False)  # 'percent' or 'flat'
+    discount_value = db.Column(db.Integer, nullable=False)
+    min_order_amount = db.Column(db.Integer, default=0)
+    max_uses = db.Column(db.Integer, nullable=True)
+    times_used = db.Column(db.Integer, default=0)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def is_valid_for(self, order_total):
+        if not self.is_active:
+            return False, "This code is no longer active."
+        if self.expires_at and datetime.utcnow() > self.expires_at:
+            return False, "This code has expired."
+        if self.max_uses is not None and self.times_used >= self.max_uses:
+            return False, "This code has reached its usage limit."
+        if order_total < self.min_order_amount:
+            return False, f"This code requires a minimum order of ₹{self.min_order_amount}."
+        return True, None
+
+    def calculate_discount(self, order_total):
+        if self.discount_type == 'percent':
+            return min(order_total * self.discount_value // 100, order_total)
+        return min(self.discount_value, order_total)

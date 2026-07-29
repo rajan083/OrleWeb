@@ -25,10 +25,46 @@
         </div>
         {% endfor %}
 
-        <div style="display:flex; justify-content:space-between; padding:20px 0; font-size:16px; font-weight:600;">
-            <span>Total</span>
-            <span>₹{{ "{:,}".format(total) }}</span>
+        <div class="profile-card">
+            {% if coupon %}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>{{ coupon.code }}</strong>
+                        <p class="onboarding-sub" style="margin:2px 0 0;">
+                            {% if coupon.discount_type == 'percent' %}{{ coupon.discount_value }}% off applied{% else %}₹{{ coupon.discount_value }} off applied{% endif %}
+                        </p>
+                    </div>
+                    <form action="{{ url_for('remove_coupon') }}" method="POST">
+                        <button type="submit" style="width:auto; padding:8px 14px; background:transparent; border:1px solid var(--error-text); color:var(--error-text);">Remove</button>
+                    </form>
+                </div>
+            {% else %}
+                <form action="{{ url_for('apply_coupon') }}" method="POST" style="display:flex; gap:8px;">
+                    <input type="text" name="coupon_code" placeholder="Coupon code" style="flex:1; text-transform:uppercase;">
+                    <button type="submit" class="btn-save" style="width:auto; padding:10px 20px;">Apply</button>
+                </form>
+            {% endif %}
         </div>
+
+        {% if discount %}
+            <div style="display:flex; justify-content:space-between; padding:8px 0; color:#666;">
+                <span>Subtotal</span>
+                <span>₹{{ "{:,}".format(total) }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; color:#666;">
+                <span>Discount</span>
+                <span>−₹{{ "{:,}".format(discount) }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:20px 0; font-size:16px; font-weight:600;">
+                <span>Total</span>
+                <span>₹{{ "{:,}".format(final_total) }}</span>
+            </div>
+        {% else %}
+            <div style="display:flex; justify-content:space-between; padding:20px 0; font-size:16px; font-weight:600;">
+                <span>Total</span>
+                <span>₹{{ "{:,}".format(total) }}</span>
+            </div>
+        {% endif %}
 
         <a href="{{ url_for('checkout') }}"><button class="btn-save" style="width:100%;">Proceed to Checkout</button></a>
     {% else %}

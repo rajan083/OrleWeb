@@ -88,7 +88,8 @@
                         <a href="{{ url_for('wishlist') }}">My Vault</a>
                         {% if current_user.is_admin %}
                             <a href="{{ url_for('admin_dashboard') }}">Admin</a>
-                        {% endif %}
+                            <a href="{{ url_for('admin_coupons') }}">Coupons</a>
+                            {% endif %}
                         <a href="{{ url_for('logout') }}">Logout</a>
                     </div>
                 </div>

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Coupons — Admin{% endblock %}
+
+{% block content %}
+<div class="onboarding">
+    <div class="section-head">
+        <h1>Coupons</h1>
+        <a href="{{ url_for('admin_add_coupon') }}" class="btn-save" style="text-decoration:none; display:inline-block; width:auto; padding:10px 20px;">+ New Coupon</a>
+    </div>
+
+    <div class="profile-card">
+        {% if coupons %}
+            {% for coupon in coupons %}
+            <div class="option-row">
+                <div>
+                    <strong>{{ coupon.code }}</strong>
+                    {% if coupon.is_active %}
+                        <span class="order-status status-delivered" style="margin-left:6px;">Active</span>
+                    {% else %}
+                        <span class="order-status status-cancelled" style="margin-left:6px;">Inactive</span>
+                    {% endif %}
+                    <p class="onboarding-sub" style="margin:4px 0 0;">
+                        {% if coupon.discount_type == 'percent' %}
+                            {{ coupon.discount_value }}% off
+                        {% else %}
+                            ₹{{ coupon.discount_value }} off
+                        {% endif %}
+                        {% if coupon.min_order_amount %} · Min order ₹{{ coupon.min_order_amount }}{% endif %}
+                        {% if coupon.max_uses %} · {{ coupon.times_used }}/{{ coupon.max_uses }} used{% else %} · {{ coupon.times_used }} used{% endif %}
+                        {% if coupon.expires_at %} · Expires {{ coupon.expires_at.strftime('%d %b %Y') }}{% endif %}
+                    </p>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <form action="{{ url_for('admin_toggle_coupon', coupon_id=coupon.id) }}" method="POST">
+                        <button type="submit" class="btn-save" style="width:auto; padding:6px 14px; font-size:12px;">
+                            {{ 'Deactivate' if coupon.is_active else 'Activate' }}
+                        </button>
+                    </form>
+                    <form action="{{ url_for('admin_delete_coupon', coupon_id=coupon.id) }}" method="POST" onsubmit="return confirm('Delete this coupon permanently?');">
+                        <button type="submit" class="btn-save" style="width:auto; padding:6px 14px; font-size:12px; background:transparent; color:#c0392b; border:1px solid #c0392b;">
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="onboarding-sub">No coupons created yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -11,7 +11,7 @@
                 <strong>₹{{ "{:,}".format(item.product.price * item.quantity) }}</strong>
             </div>
         {% endfor %}
-        <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(total) }}</strong></div>
+        <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(final_total) }}</strong></div>
     </div>
 
     <form method="POST" id="checkoutForm">
