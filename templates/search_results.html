@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
+
+{% block title %}{% if query %}"{{ query }}" — Search{% else %}Search{% endif %} · ORLE{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-section">
+    <div class="section-head">
+        {% if query %}
+            <h2>Results for "{{ query }}"</h2>
+            <span class="onboarding-sub">{{ products|length }} item{{ 's' if products|length != 1 }} found</span>
+        {% else %}
+            <h2>Search</h2>
+        {% endif %}
+    </div>
+
+    {% if query and products %}
+        <div class="product-grid">
+            {% for product in products %}
+                <div class="product-card">
+                    {% if current_user.is_authenticated and not current_user.is_vendor %}
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h3>{{ product.name }}</h3>
+                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+
+    {% elif query and not products %}
+        <p class="onboarding-sub">No pieces found for "{{ query }}". Try a different term, or <a href="{{ url_for('catalogue') }}">browse The Edit</a>.</p>
+
+    {% else %}
+        <p class="onboarding-sub">Search by name, category, or style.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

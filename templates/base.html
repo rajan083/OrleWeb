@@ -26,6 +26,19 @@
         </div>
 
        <div class="nav-icons">
+
+            <div class="search-wrapper" id="searchWrapper">
+                <button type="button" class="search-toggle" id="searchToggle" aria-label="Search">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
+                        <path d="M20 20L16.5 16.5" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <form action="{{ url_for('search') }}" method="GET" class="search-form" id="searchForm">
+                    <input type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" id="searchInput">
+                </form>
+            </div>
+
             {% if current_user.is_authenticated %}
                 {% if current_user.is_vendor %}
                     <a href="{{ url_for('vendor_dashboard') }}">Dashboard</a>
@@ -98,6 +111,7 @@
         </div>
     {% endif %}
 {% endwith %}
+
 
 {% block content %}
 {% endblock %}
@@ -175,6 +189,32 @@ if (accountToggle) {
             accountMenu.classList.remove("open");
         }
     });
+}
+</script>
+<script>
+const searchToggle = document.getElementById("searchToggle");
+const searchWrapper = document.getElementById("searchWrapper");
+const searchInput = document.getElementById("searchInput");
+
+if (searchToggle) {
+    searchToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isActive = searchWrapper.classList.toggle("active");
+        if (isActive) {
+            searchInput.focus();
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!searchWrapper.contains(e.target) && !searchInput.value.trim()) {
+            searchWrapper.classList.remove("active");
+        }
+    });
+
+    // Keep it open if there's already a query in the box (e.g. landed on search_results.html)
+    if (searchInput.value.trim()) {
+        searchWrapper.classList.add("active");
+    }
 }
 </script>
 

@@ -2,6 +2,8 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_jwt_extended import JWTManager
 from config import Config
@@ -14,6 +16,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
 import razorpay
+
 
 
 
@@ -888,10 +891,9 @@ def vendor_add_product():
             flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
             return redirect(request.url)
         image_path = save_product_image(image)
-        
-    if not product.requires_size:
-        product.stock_quantity = int(request.form.get('stock_quantity') or 0)
-        
+
+    requires_size = request.form.get('requires_size') == 'on'
+
     product = Product(
         name=request.form.get('name'),
         description=request.form.get('description'),
@@ -902,10 +904,11 @@ def vendor_add_product():
         best_for_occasions=request.form.get('best_for_occasions'),
         fit_note=request.form.get('fit_note'),
         vendor_id=current_user.id,
-        requires_size=request.form.get('requires_size') == 'on'
+        requires_size=requires_size,
+        stock_quantity=0 if requires_size else int(request.form.get('stock_quantity') or 0)
     )
     db.session.add(product)
-    db.session.flush()  # gives product.id before commit, so we can attach gallery/size rows
+    db.session.flush()
 
     gallery_files = request.files.getlist("gallery_images")
     for order, gfile in enumerate(gallery_files):
@@ -1329,53 +1332,7 @@ def payment_verify():
     return redirect(url_for('order_detail', order_id=order.id))
 
 
- #===============================================Home===================================================================
-
-@app.route('/')
-def home():
-    best_sellers = Product.query.order_by(Product.created_at.desc()).limit(5).all()
-    new_arrivals = Product.query.order_by(Product.created_at.desc()).limit(2).all()
-    offer = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).first()
-    categories = db.session.query(Product.category).distinct().limit(3).all()
-    categories = [c[0] for c in categories]
-
-    carousel_products = (
-        Product.query
-        .filter(Product.image_url.isnot(None), Product.vendor_id.isnot(None))
-        .order_by(Product.created_at.desc())
-        .limit(4)
-        .all()
-    )
-    if not carousel_products:
-        carousel_products = (
-            Product.query
-            .filter(Product.image_url.isnot(None))
-            .order_by(Product.created_at.desc())
-            .limit(4)
-            .all()
-        )
-
-    mission_products = (
-        Product.query
-        .filter(Product.image_url.isnot(None))
-        .order_by(Product.created_at.desc())
-        .limit(2)
-        .all()
-    )
-
-    return render_template(
-        'home.html',
-        best_sellers=best_sellers,
-        new_arrivals=new_arrivals,
-        offer=offer,
-        categories=categories,
-        carousel_products=carousel_products,
-        mission_products=mission_products
-    )
-    
-
 #===============================================ADMIN===================================================================
-#===============================================Admin Auth===================================================================
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -1471,9 +1428,79 @@ def admin_dashboard():
         recent_orders=recent_orders
     )
     
-        
- #===============================================MAIN===================================================================
 
+#===============================================Search===================================================================
+
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '').strip()
+
+    wishlisted_ids = set()
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
+
+    if not query:
+        return render_template('search_results.html', products=[], query='', wishlisted_ids=wishlisted_ids)
+
+    like_pattern = f"%{query}%"
+    products = Product.query.filter(
+        or_(
+            Product.name.ilike(like_pattern),
+            Product.description.ilike(like_pattern),
+            Product.category.ilike(like_pattern)
+        )
+    ).order_by(Product.created_at.desc()).all()
+
+    return render_template('search_results.html', products=products, query=query, wishlisted_ids=wishlisted_ids)
+
+#===============================================Home===================================================================
+
+@app.route('/')
+def home():
+    best_sellers = Product.query.order_by(Product.created_at.desc()).limit(5).all()
+    new_arrivals = Product.query.order_by(Product.created_at.desc()).limit(2).all()
+    offer = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).first()
+    categories = db.session.query(Product.category).distinct().limit(3).all()
+    categories = [c[0] for c in categories]
+
+    carousel_products = (
+        Product.query
+        .filter(Product.image_url.isnot(None), Product.vendor_id.isnot(None))
+        .order_by(Product.created_at.desc())
+        .limit(4)
+        .all()
+    )
+    if not carousel_products:
+        carousel_products = (
+            Product.query
+            .filter(Product.image_url.isnot(None))
+            .order_by(Product.created_at.desc())
+            .limit(4)
+            .all()
+        )
+
+    mission_products = (
+        Product.query
+        .filter(Product.image_url.isnot(None))
+        .order_by(Product.created_at.desc())
+        .limit(2)
+        .all()
+    )
+
+    return render_template(
+        'home.html',
+        best_sellers=best_sellers,
+        new_arrivals=new_arrivals,
+        offer=offer,
+        categories=categories,
+        carousel_products=carousel_products,
+        mission_products=mission_products
+    )
+    
+    
+  #===============================================MAIN===================================================================
+   
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
