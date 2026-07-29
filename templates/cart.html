@@ -10,6 +10,9 @@
             <img src="{{ item.product.image_url | product_image }}" style="width:80px; height:100px; object-fit:cover;">
             <div style="flex:1;">
                 <h4>{{ item.product.name }}</h4>
+                {% if item.size %}
+                    <p class="cart-item-size">Size: {{ item.size }}</p>
+                {% endif %}
                 <p class="product-price">₹{{ "{:,}".format(item.product.price) }} each</p>
             </div>
             <form action="{{ url_for('cart_update', item_id=item.id) }}" method="POST" style="display:flex; gap:8px; align-items:center;">

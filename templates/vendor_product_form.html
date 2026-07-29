@@ -1,54 +1,122 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit Product' if product else 'Add Product' }}{% endblock %}
-{% block content %}
-<div class="onboarding">
-    <h1>{{ 'Edit product' if product else 'List a new product' }}</h1>
 
-    <form action="{{ url_for('vendor_edit_product', product_id=product.id) if product else url_for('vendor_add_product') }}" method="POST" enctype="multipart/form-data">
-        
+{% block title %}{{ 'Edit Product' if product else 'Add Product' }} · ORLE{% endblock %}
+
+{% block content %}
+<div class="dashboard-section" style="max-width:640px;">
+
+    <h1>{{ 'Edit Product' if product else 'List a New Product' }}</h1>
+
+    <form method="POST"
+          action="{{ url_for('vendor_edit_product', product_id=product.id) if product else url_for('vendor_add_product') }}"
+          enctype="multipart/form-data"
+          style="margin-top:24px; gap:20px;">
+
         <div class="field">
             <label>Name</label>
             <input type="text" name="name" value="{{ product.name if product else '' }}" required>
         </div>
+
         <div class="field">
             <label>Description</label>
-            <input type="text" name="description" value="{{ product.description if product else '' }}">
+            <textarea name="description" rows="4" style="padding:12px 14px; border:1px solid var(--light-grey); border-radius:3px; font-size:14px; background:var(--cream); width:100%; resize:vertical;">{{ product.description if product else '' }}</textarea>
         </div>
-        <div class="field">
-            <label>Price (₹)</label>
-            <input type="number" name="price" value="{{ product.price if product else '' }}" required>
-        </div>
-        <div class="field">
-            <label>Category</label>
-            <input type="text" name="category" value="{{ product.category if product else '' }}" placeholder="suit, blazer, trouser..." required>
-        </div>
-        <div class="field">
-            <label>Product Image</label>
 
-            {% if product and product.image_url %}
-                <img
-                    src="{{ url_for('static', filename=product.image_url) }}"
-                    style="width:150px;border-radius:10px;margin-bottom:12px;">
-            {% endif %}
+        <div style="display:flex; gap:16px;">
+            <div class="field" style="flex:1;">
+                <label>Price (₹)</label>
+                <input type="number" name="price" value="{{ product.price if product else '' }}" min="0" required>
+            </div>
+            <div class="field" style="flex:1;">
+                <label>Category</label>
+                <input type="text" name="category" value="{{ product.category if product else '' }}" required>
+            </div>
+        </div>
 
-            <input
-                type="file"
-                name="product_image"
-                accept=".jpg,.jpeg,.png,.webp">
-        </div>        
         <div class="field">
-            <label>Best for body types (comma-separated)</label>
-            <input type="text" name="best_for_body_types" value="{{ product.best_for_body_types if product else '' }}">
+            <label>Best for body types</label>
+            <input type="text" name="best_for_body_types" value="{{ product.best_for_body_types if product else '' }}" placeholder="e.g. athletic, slim">
         </div>
+
         <div class="field">
-            <label>Best for occasions (comma-separated)</label>
-            <input type="text" name="best_for_occasions" value="{{ product.best_for_occasions if product else '' }}">
+            <label>Best for occasions</label>
+            <input type="text" name="best_for_occasions" value="{{ product.best_for_occasions if product else '' }}" placeholder="e.g. formal, wedding">
         </div>
+
         <div class="field">
             <label>Fit note</label>
             <input type="text" name="fit_note" value="{{ product.fit_note if product else '' }}">
         </div>
-        <button type="submit" class="btn-save">{{ 'Save changes' if product else 'List product' }}</button>
+
+        <!-- ============ COVER IMAGE ============ -->
+        <div class="field">
+            <label>{{ 'Replace cover image' if product else 'Cover image' }}</label>
+            {% if product and product.image_url %}
+                <img src="{{ product.image_url | product_image }}" alt="Current cover" style="width:120px; height:150px; object-fit:cover; border-radius:4px; margin-bottom:10px; display:block;">
+            {% endif %}
+            <input type="file" name="product_image" accept=".jpg,.jpeg,.png,.webp" {{ 'required' if not product else '' }}>
+        </div>
+
+        <!-- ============ GALLERY IMAGES ============ -->
+        <div class="field">
+            <label>Gallery images {{ '(additional angles)' if not product else '' }}</label>
+
+            {% if product and product.gallery_images %}
+                <div class="vpf-gallery-grid">
+                    {% for img in product.gallery_images %}
+                        <div class="vpf-gallery-item">
+                            <img src="{{ img.image_url | product_image }}" alt="Gallery image">
+                            <label class="vpf-gallery-delete">
+                                <input type="checkbox" name="delete_gallery_image" value="{{ img.id }}">
+                                Remove
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <input type="file" name="gallery_images" accept=".jpg,.jpeg,.png,.webp" multiple style="margin-top:10px;">
+            <p class="onboarding-sub" style="margin-top:6px;">Add up to 4-5 additional angles.</p>
+        </div>
+
+        <!-- ============ SIZES ============ -->
+        <div class="field">
+            <label class="vpf-checkbox-label">
+                <input type="checkbox" name="requires_size" id="requiresSize"
+                       {{ 'checked' if product and product.requires_size else '' }}>
+                This product requires size selection
+            </label>
+            <div id="plainStockField" class="field" style="{{ 'display:none;' if product and product.requires_size else '' }}">
+                <label>Stock Quantity</label>
+                <input type="number" name="stock_quantity" min="0" value="{{ product.stock_quantity if product else 0 }}">
+            </div>
+
+            <div id="sizeStockGrid" class="vpf-size-grid" style="{{ '' if product and product.requires_size else 'display:none;' }}">
+                {% for size in SIZE_CHOICES %}
+                    {% set existing_qty = size_stock.get(size, 0) %}
+                    <div class="vpf-size-input">
+                        <label>{{ size }}</label>
+                        <input type="number" name="stock_{{ size }}" min="0" value="{{ existing_qty }}" placeholder="Stock">
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit">{{ 'Save Changes' if product else 'List Product' }}</button>
     </form>
 </div>
+
+<script>
+const requiresSizeCheckbox = document.getElementById('requiresSize');
+const sizeGrid = document.getElementById('sizeStockGrid');
+
+requiresSizeCheckbox.addEventListener('change', () => {
+    sizeGrid.style.display = requiresSizeCheckbox.checked ? 'grid' : 'none';
+});
+
+requiresSizeCheckbox.addEventListener('change', () => {
+    sizeGrid.style.display = requiresSizeCheckbox.checked ? 'grid' : 'none';
+    document.getElementById('plainStockField').style.display = requiresSizeCheckbox.checked ? 'none' : 'block';
+});
+</script>
 {% endblock %}

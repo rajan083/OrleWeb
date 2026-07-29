@@ -73,6 +73,9 @@
                         <a href="{{ url_for('profile') }}">Profile</a>
                         <a href="{{ url_for('orders') }}">My Orders</a>
                         <a href="{{ url_for('wishlist') }}">My Vault</a>
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+                        {% endif %}
                         <a href="{{ url_for('logout') }}">Logout</a>
                     </div>
                 </div>
@@ -119,6 +122,9 @@
                 <a href="{{ url_for('login') }}">Sign In</a>
                 <a href="{{ url_for('register') }}">Register</a>
             {% endif %}
+            <h4>Business</h4>
+            <a href="{{ url_for('vendor_login') }}">Vendor Portal</a>
+            <a href="{{ url_for('admin_login') }}">Admin Login</a>
         </div>
     </div>
     <div class="footer-bottom">

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login · ORLE{% endblock %}
+
+{% block content %}
+<div class="form-wrapper">
+    <div class="form-card">
+        <div class="wordmark-sm" style="margin-bottom: 4px;">ORLE Admin</div>
+        <p>Restricted access — platform administrators only.</p>
+
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <input type="email" name="email" placeholder="Email" required autofocus>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Sign In</button>
+        </form>
+
+        <div class="form-links">
+            <a href="{{ url_for('login') }}">Customer login</a>
+            <a href="{{ url_for('vendor_login') }}">Vendor login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

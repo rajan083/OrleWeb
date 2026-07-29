@@ -28,9 +28,22 @@
         </div>
     </div>
 
-    <canvas id="salesChart" height="90"></canvas>
+<div class="profile-card">
+    <div class="chart-tabs">
+        <button class="chart-tab active" data-chart="salesChart">Revenue Over Time</button>
+        <button class="chart-tab" data-chart="weekdayChart">By Day of Week</button>
+        <button class="chart-tab" data-chart="unitsChart">Units by Product</button>
+        <button class="chart-tab" data-chart="revenueShareChart">Revenue Share</button>
+    </div>
+    <div class="chart-canvas-wrap">
+        <canvas id="salesChart"></canvas>
+        <canvas id="weekdayChart" style="display:none;"></canvas>
+        <canvas id="unitsChart" style="display:none;"></canvas>
+        <canvas id="revenueShareChart" style="display:none;"></canvas>
+    </div>
+</div>
 
-    <h2 style="margin-top:40px; margin-bottom:16px;">Sale Log</h2>
+<h2 style="margin-top:40px; margin-bottom:16px;">Sale Log</h2>
 
     <form action="{{ url_for('vendor_add_sale') }}" method="POST" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:24px;">
         <select name="product_id" required style="padding:10px; border:1px solid var(--light-grey); border-radius:3px;">
@@ -72,19 +85,25 @@
             {% endfor %}
         </tbody>
     </table>
+
 </div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    new Chart(ctx, {
+    const oliveGreen = '#5C6B4A';
+    const tan = '#343434';
+    const palette = ['#5C6B4A', '#8A8A82', '#343434', '#B8B29F', '#3E4A32', '#C9C7BF', '#232320', '#7A7264'];
+
+    // ── Revenue over time (line) ──────────────────────
+    new Chart(document.getElementById('salesChart').getContext('2d'), {
         type: 'line',
         data: {
             labels: {{ chart_labels | tojson }},
             datasets: [{
                 label: 'Revenue (₹)',
                 data: {{ chart_values | tojson }},
-                borderColor: '#5C6B4A',
+                borderColor: oliveGreen,
                 backgroundColor: 'rgba(92,107,74,0.1)',
                 tension: 0.3,
                 fill: true
@@ -93,6 +112,69 @@
         options: {
             responsive: true,
             plugins: { legend: { display: false } }
+        }
+    });
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            document.querySelectorAll('.chart-canvas-wrap canvas').forEach(c => c.style.display = 'none');
+            document.getElementById(tab.dataset.chart).style.display = 'block';
+        });
+    });
+    // ── Revenue by day of week (bar) ──────────────────
+    new Chart(document.getElementById('weekdayChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ weekday_names | tojson }},
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: {{ weekday_totals | tojson }},
+                backgroundColor: oliveGreen,
+                borderRadius: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // ── Units sold per product (horizontal bar) ───────
+    new Chart(document.getElementById('unitsChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: {{ product_labels | tojson }},
+            datasets: [{
+                label: 'Units Sold',
+                data: {{ product_units | tojson }},
+                backgroundColor: tan,
+                borderRadius: 3
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true } }
+        }
+    });
+
+    // ── Revenue share per product (doughnut) ──────────
+    new Chart(document.getElementById('revenueShareChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ product_labels | tojson }},
+            datasets: [{
+                data: {{ product_revenue | tojson }},
+                backgroundColor: palette
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
         }
     });
 </script>

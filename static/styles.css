@@ -1991,3 +1991,578 @@ footer {
 @media (max-width: 480px) {
     .tracker-label { font-size: 10px; }
 }
+
+/* ============ ADMIN DASHBOARD ============ */
+.admin-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.admin-header {
+    margin-bottom: 32px;
+}
+
+.admin-header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 28px;
+    margin-bottom: 6px;
+}
+
+.admin-header p {
+    font-size: 13.5px;
+    color: var(--grey);
+}
+
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 36px;
+}
+
+.admin-stat-card {
+    background: #ffffff;
+    border: 1px solid var(--light-grey);
+    border-radius: 6px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: border-color 0.2s;
+}
+
+.admin-stat-card:hover {
+    border-color: var(--olive);
+}
+
+.admin-stat-card strong {
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: 4px;
+}
+
+.admin-stat-card span {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grey);
+}
+
+@media (max-width: 900px) {
+    .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.admin-section {
+    background: #ffffff;
+    border: 1px solid var(--light-grey);
+    border-radius: 6px;
+    padding: 28px;
+    margin-bottom: 24px;
+}
+
+.admin-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 20px;
+}
+
+.admin-section-head h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--olive);
+}
+
+.admin-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 800px) {
+    .admin-two-col { grid-template-columns: 1fr; }
+}
+
+.admin-chart-wrap {
+    height: 260px;
+    position: relative;
+}
+
+.admin-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--off-white);
+    font-size: 13.5px;
+}
+
+.admin-status-row:last-child {
+    border-bottom: none;
+}
+
+.admin-status-row span:first-child {
+    color: var(--grey);
+    text-transform: capitalize;
+}
+
+.admin-status-row strong {
+    font-weight: 500;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.admin-table th {
+    text-align: left;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--grey);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--light-grey);
+}
+
+.admin-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--off-white);
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-empty-state {
+    font-size: 13px;
+    color: var(--grey);
+    text-align: center;
+    padding: 24px 0;
+}
+
+/* ============ STAR RATING DISPLAY ============ */
+.pd-rating-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+}
+
+.pd-stars {
+    --star-size: 15px;
+    display: inline-block;
+    font-size: var(--star-size);
+    line-height: 1;
+    position: relative;
+    color: var(--light-grey);
+}
+
+.pd-stars::before {
+    content: '★★★★★';
+    letter-spacing: 2px;
+}
+
+.pd-stars::after {
+    content: '★★★★★';
+    letter-spacing: 2px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(var(--rating) / 5 * 100%);
+    overflow: hidden;
+    color: var(--tan);
+    white-space: nowrap;
+}
+
+.pd-rating-text {
+    font-size: 12.5px;
+    color: var(--grey);
+}
+
+/* ============ REVIEWS SECTION ============ */
+.pd-reviews-section {
+    border-top: 1px solid var(--light-grey);
+    padding-top: 40px;
+    margin-top: 20px;
+}
+
+.pd-review-form-card {
+    background: #ffffff;
+    border: 1px solid var(--light-grey);
+    border-radius: 6px;
+    padding: 24px;
+    max-width: 480px;
+    margin-bottom: 32px;
+}
+
+.pd-review-form-card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 17px;
+    margin-bottom: 4px;
+}
+
+.pd-review-form {
+    gap: 16px;
+    margin-top: 14px;
+}
+
+.pd-review-form select,
+.pd-review-form textarea {
+    padding: 12px 14px;
+    border: 1px solid var(--light-grey);
+    border-radius: 3px;
+    font-size: 14px;
+    background: var(--cream);
+    outline: none;
+    resize: vertical;
+    width: 100%;
+}
+
+.pd-review-form select:focus,
+.pd-review-form textarea:focus {
+    border-color: var(--olive);
+}
+
+.pd-review-submit {
+    width: auto;
+    align-self: flex-start;
+    padding: 13px 26px;
+}
+
+/* Star rating input — CSS-only right-to-left hover trick */
+.pd-star-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: 26px;
+}
+
+.pd-star-input input {
+    display: none;
+}
+
+.pd-star-input label {
+    color: var(--light-grey);
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 0;
+}
+
+.pd-star-input label:hover,
+.pd-star-input label:hover ~ label,
+.pd-star-input input:checked ~ label {
+    color: var(--tan);
+}
+
+.pd-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 640px;
+}
+
+.pd-review-card {
+    border-bottom: 1px solid var(--off-white);
+    padding-bottom: 20px;
+}
+
+.pd-review-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.pd-review-author {
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
+.pd-review-date {
+    font-size: 12px;
+    color: var(--grey);
+}
+
+.pd-review-comment {
+    font-size: 13.5px;
+    color: var(--charcoal);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.pd-verified-badge {
+    display: inline-block;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--olive);
+    font-weight: 600;
+}
+
+/* ============ VENDOR PROFILE CHARTS GRID ============ */
+
+
+.chart-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.chart-tab {
+    width: auto;
+    background: var(--off-white);
+    color: var(--charcoal);
+    border: 1px solid var(--light-grey);
+    padding: 8px 16px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.chart-tab:hover {
+    background: var(--light-grey);
+}
+
+.chart-tab.active {
+    background: var(--charcoal);
+    color: var(--cream);
+}
+
+.chart-canvas-wrap {
+    height: 320px;
+    position: relative;
+}
+
+.chart-canvas-wrap canvas {
+    max-height: 320px;
+}
+
+.admin-chart-wrap-sm {
+    height: 200px;
+    margin-bottom: 18px;
+}
+
+.admin-status-split {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.admin-status-split .admin-chart-wrap-sm {
+    flex: 0 0 160px;
+    height: 160px;
+    margin-bottom: 0;
+}
+
+.admin-status-list {
+    flex: 1;
+}
+
+@media (max-width: 600px) {
+    .admin-status-split {
+        flex-direction: column;
+    }
+    .admin-status-split .admin-chart-wrap-sm {
+        flex: none;
+        width: 160px;
+    }
+}
+
+/* ============ VENDOR PRODUCT FORM ============ */
+.vpf-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--charcoal);
+    cursor: pointer;
+}
+
+.vpf-checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--olive);
+}
+
+.vpf-size-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.vpf-size-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vpf-size-input label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--grey);
+}
+
+.vpf-size-input input {
+    padding: 10px 12px;
+}
+
+.vpf-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.vpf-gallery-item {
+    position: relative;
+}
+
+.vpf-gallery-item img {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+
+.vpf-gallery-delete {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--error-text);
+    margin-top: 6px;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.vpf-gallery-delete input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--error-text);
+}
+
+.cart-item-size {
+    font-size: 12px;
+    color: var(--grey);
+    margin: 2px 0 4px;
+    letter-spacing: 0.02em;
+}
+
+/* ============ SIZE SELECTOR (product detail) ============ */
+.pd-size-select {
+    margin-top: 20px;
+}
+
+.pd-size-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pd-size-pill {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--light-grey);
+    border-radius: 3px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.pd-size-pill input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    margin: 0;
+}
+
+.pd-size-pill:has(input:checked) {
+    border-color: var(--charcoal);
+    background: var(--charcoal);
+    color: var(--cream);
+}
+
+.pd-size-pill.out-of-stock {
+    color: var(--light-grey);
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.pd-size-pill.out-of-stock input {
+    cursor: not-allowed;
+}
+
+.pd-purchase-form-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* ============ PRODUCT DETAIL — GALLERY THUMBNAILS ============ */
+.pd-thumb-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.pd-thumb {
+    width: 60px;
+    height: 76px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+    background: none;
+    opacity: 0.65;
+    transition: opacity 0.15s, border-color 0.15s;
+}
+
+.pd-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pd-thumb:hover {
+    opacity: 1;
+}
+
+.pd-thumb.active {
+    border-color: var(--charcoal);
+    opacity: 1;
+}

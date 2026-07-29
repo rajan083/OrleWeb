@@ -16,6 +16,8 @@ class User(db.Model, UserMixin):
     google_id = db.Column(db.String(255), unique = True, nullable= True)
     profile_picture = db.Column(db.String(500), nullable=True)
     
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)  # NEW
+    
     created_at = db.Column(db.DateTime, default = datetime.utcnow)
         
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
@@ -91,6 +93,33 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
+    
+    requires_size = db.Column(db.Boolean, default=False, nullable=False)  # NEW — vendor toggles this on for clothing
+    
+    stock_quantity = db.Column(db.Integer, nullable=False, default=0)  # NEW — only meaningful when requires_size=False
+
+    @property
+    def available_stock(self):
+        """Unified stock check regardless of whether the product is sized."""
+        if self.requires_size:
+            return sum(s.stock_quantity for s in self.sizes)
+        return self.stock_quantity
+
+    def stock_for_size(self, size):
+        if not self.requires_size:
+            return self.stock_quantity
+        match = next((s for s in self.sizes if s.size == size), None)
+        return match.stock_quantity if match else 0
+
+    @property
+    def average_rating(self):
+        if not self.reviews:
+            return None
+        return round(sum(r.rating for r in self.reviews) / len(self.reviews), 1)
+
+    @property
+    def review_count(self):
+        return len(self.reviews)
 
     def to_dict(self):
         return {
@@ -193,6 +222,7 @@ class CartItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    size = db.Column(db.String(10), nullable=True)  # NEW
 
     product = db.relationship('Product')
 
@@ -229,7 +259,7 @@ class OrderItem(db.Model):
     product_name = db.Column(db.String(150), nullable=False)  # snapshot — survives product deletion
     unit_price = db.Column(db.Integer, nullable=False)         # snapshot — survives price changes
     quantity = db.Column(db.Integer, nullable=False)
-
+    size = db.Column(db.String(10), nullable=True)  # NEW — snapshot, same pattern as product_name/unit_price
     product = db.relationship('Product')
     
 class Address(db.Model):
@@ -244,3 +274,56 @@ class Address(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='addresses')
+    
+# ── Reviews ──────────────────────────────────────────────
+class Review(db.Model):
+    __tablename__ = 'reviews'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)       # 1-5
+    comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User')
+    product = db.relationship('Product', backref=db.backref('reviews', cascade='all, delete-orphan'))
+    order_item = db.relationship('OrderItem')
+
+    # one review per actual purchased line-item — this is what enforces "verified purchase only"
+    __table_args__ = (db.UniqueConstraint('order_item_id', name='uq_review_per_order_item'),)
+
+
+# ── Multi-image products ────────────────────────────────
+class ProductImage(db.Model):
+    __tablename__ = 'product_images'
+
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    image_url = db.Column(db.String(300), nullable=False)
+    display_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    product = db.relationship(
+        'Product',
+        backref=db.backref('gallery_images', order_by='ProductImage.display_order', cascade='all, delete-orphan')
+    )
+    # NOTE: Product.image_url stays as-is — it's the cover image.
+    # gallery_images are the *additional* angles shown on the product page.
+
+
+# ── Size chart / per-size stock ─────────────────────────
+SIZE_CHOICES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+
+class ProductSize(db.Model):
+    __tablename__ = 'product_sizes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    size = db.Column(db.String(10), nullable=False)
+    stock_quantity = db.Column(db.Integer, nullable=False, default=0)
+
+    product = db.relationship('Product', backref=db.backref('sizes', cascade='all, delete-orphan'))
+
+    __table_args__ = (db.UniqueConstraint('product_id', 'size', name='uq_product_size'),)

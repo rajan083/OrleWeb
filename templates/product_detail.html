@@ -16,12 +16,33 @@
 
     <div class="product-detail">
         <div class="pd-image-wrap">
-            <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}" class="product-detail-img">
+            <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}" class="product-detail-img" id="pdMainImage">
+
+            {% if product.gallery_images %}
+                <div class="pd-thumb-row">
+                    <button type="button" class="pd-thumb active" data-src="{{ product.image_url | product_image }}">
+                        <img src="{{ product.image_url | product_image }}" alt="Cover">
+                    </button>
+                    {% for img in product.gallery_images %}
+                        <button type="button" class="pd-thumb" data-src="{{ img.image_url | product_image }}">
+                            <img src="{{ img.image_url | product_image }}" alt="{{ product.name }} — angle {{ loop.index }}">
+                        </button>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
 
         <div class="product-detail-info">
             <p class="pd-category">{{ product.category|title }}</p>
             <h1>{{ product.name }}</h1>
+
+            {% if product.review_count > 0 %}
+                <a href="#reviews" class="pd-rating-summary">
+                    <span class="pd-stars" style="--rating: {{ product.average_rating }};" aria-hidden="true"></span>
+                    <span class="pd-rating-text">{{ product.average_rating }} · {{ product.review_count }} review{{ 's' if product.review_count != 1 else '' }}</span>
+                </a>
+            {% endif %}
+
             <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
 
             {% if product.description %}
@@ -35,21 +56,43 @@
                 </div>
             {% endif %}
 
-            <form action="{{ url_for('cart_add', product_id=product.id) }}" method="POST" class="pd-purchase-form">
-                <div class="qty-stepper">
-                    <button type="button" class="qty-btn" onclick="stepQty(-1)">−</button>
-                    <input type="number" name="quantity" id="qtyInput" value="1" min="1" readonly>
-                    <button type="button" class="qty-btn" onclick="stepQty(1)">+</button>
-                </div>
+            <form action="{{ url_for('cart_add', product_id=product.id) }}" method="POST" class="pd-purchase-form-wrap">
 
-                <div class="detail-actions">
-                    <button type="submit" class="btn-bag">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <path d="M3.74157 18.5545C4.94119 20 7.17389 20 11.6393 20H12.3605C16.8259 20 19.0586 20 20.2582 18.5545M3.74157 18.5545C2.54194 17.1091 2.9534 14.9146 3.77633 10.5257C4.36155 7.40452 4.65416 5.84393 5.76506 4.92196M3.74157 18.5545C3.74156 18.5545 3.74157 18.5545 3.74157 18.5545ZM20.2582 18.5545C21.4578 17.1091 21.0464 14.9146 20.2235 10.5257C19.6382 7.40452 19.3456 5.84393 18.2347 4.92196M20.2582 18.5545C20.2582 18.5545 20.2582 18.5545 20.2582 18.5545ZM18.2347 4.92196C17.1238 4 15.5361 4 12.3605 4H11.6393C8.46374 4 6.87596 4 5.76506 4.92196M18.2347 4.92196C18.2347 4.92196 18.2347 4.92196 18.2347 4.92196ZM5.76506 4.92196C5.76506 4.92196 5.76506 4.92196 5.76506 4.92196Z" stroke-width="1.5"/>
-                            <path opacity="0.5" d="M9.1709 8C9.58273 9.16519 10.694 10 12.0002 10C13.3064 10 14.4177 9.16519 14.8295 8" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                        Add to Bag
-                    </button>
+                {% if product.requires_size %}
+                    <div class="pd-size-select">
+                        <label class="fit-note-label">Select Size</label>
+                        <div class="pd-size-options">
+                            {% for size in product.sizes|sort(attribute='size') %}
+                                <label class="pd-size-pill {{ 'out-of-stock' if size.stock_quantity <= 0 else '' }}">
+                                    <input type="radio" name="size" value="{{ size.size }}"
+                                        {{ 'disabled' if size.stock_quantity <= 0 else '' }}
+                                        {{ 'required' if product.requires_size else '' }}>
+                                    {{ size.size }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {% if not product.sizes %}
+                            <p class="onboarding-sub">Currently out of stock in all sizes.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="pd-purchase-form">
+                    <div class="qty-stepper">
+                        <button type="button" class="qty-btn" onclick="stepQty(-1)">−</button>
+                        <input type="number" name="quantity" id="qtyInput" value="1" min="1" readonly>
+                        <button type="button" class="qty-btn" onclick="stepQty(1)">+</button>
+                    </div>
+
+                    <div class="detail-actions">
+                        <button type="submit" class="btn-bag" {{ 'disabled' if product.requires_size and not product.sizes else '' }}>
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M3.74157 18.5545C4.94119 20 7.17389 20 11.6393 20H12.3605C16.8259 20 19.0586 20 20.2582 18.5545M3.74157 18.5545C2.54194 17.1091 2.9534 14.9146 3.77633 10.5257C4.36155 7.40452 4.65416 5.84393 5.76506 4.92196M3.74157 18.5545C3.74156 18.5545 3.74157 18.5545 3.74157 18.5545ZM20.2582 18.5545C21.4578 17.1091 21.0464 14.9146 20.2235 10.5257C19.6382 7.40452 19.3456 5.84393 18.2347 4.92196M20.2582 18.5545C20.2582 18.5545 20.2582 18.5545 20.2582 18.5545ZM18.2347 4.92196C17.1238 4 15.5361 4 12.3605 4H11.6393C8.46374 4 6.87596 4 5.76506 4.92196M18.2347 4.92196C18.2347 4.92196 18.2347 4.92196 18.2347 4.92196ZM5.76506 4.92196C5.76506 4.92196 5.76506 4.92196 5.76506 4.92196Z" stroke-width="1.5"/>
+                                <path opacity="0.5" d="M9.1709 8C9.58273 9.16519 10.694 10 12.0002 10C13.3064 10 14.4177 9.16519 14.8295 8" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Add to Bag
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -77,8 +120,76 @@
         </div>
     </div>
 
+    <!-- ============ REVIEWS ============ -->
+    <div class="dashboard-section pd-reviews-section" id="reviews">
+        <div class="section-head">
+            <h2>Reviews</h2>
+            {% if product.review_count > 0 %}
+                <span class="pd-rating-text">{{ product.average_rating }} average · {{ product.review_count }} review{{ 's' if product.review_count != 1 else '' }}</span>
+            {% endif %}
+        </div>
+
+        {% if reviewable_order_items %}
+            <div class="pd-review-form-card">
+                <h3>Write a review</h3>
+                <p class="onboarding-sub">You purchased this — share what you thought.</p>
+                <form action="{{ url_for('add_review', product_id=product.id) }}" method="POST" class="pd-review-form">
+                    {% if reviewable_order_items|length > 1 %}
+                        <div class="field">
+                            <label for="order_item_id">Which purchase is this for?</label>
+                            <select name="order_item_id" id="order_item_id" required>
+                                {% for oi in reviewable_order_items %}
+                                    <option value="{{ oi.id }}">Order #{{ oi.order_id }} — {{ oi.quantity }}x on {{ oi.order.created_at.strftime('%d %b %Y') }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% else %}
+                        <input type="hidden" name="order_item_id" value="{{ reviewable_order_items[0].id }}">
+                    {% endif %}
+
+                    <div class="field">
+                        <label>Rating</label>
+                        <div class="pd-star-input">
+                            {% for i in range(5, 0, -1) %}
+                                <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required>
+                                <label for="star{{ i }}" title="{{ i }} star{{ 's' if i != 1 else '' }}">★</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="comment">Comment (optional)</label>
+                        <textarea name="comment" id="comment" rows="3" placeholder="What did you think of the fit, fabric, and quality?"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-tan pd-review-submit">Submit Review</button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% if reviews %}
+            <div class="pd-review-list">
+                {% for review in reviews %}
+                    <div class="pd-review-card">
+                        <div class="pd-review-head">
+                            <span class="pd-stars" style="--rating: {{ review.rating }};" aria-hidden="true"></span>
+                            <span class="pd-review-author">{{ review.user.name }}</span>
+                            <span class="pd-review-date">{{ review.created_at.strftime('%d %b %Y') }}</span>
+                        </div>
+                        {% if review.comment %}
+                            <p class="pd-review-comment">{{ review.comment }}</p>
+                        {% endif %}
+                        <span class="pd-verified-badge">Verified Purchase</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="admin-empty-state">No reviews yet — be the first to share your thoughts.</div>
+        {% endif %}
+    </div>
+
     {% if related_products %}
-    <div class="dashboard-section" style="padding-top:60px;">
+    <div class="dashboard-section" style="padding-top:0;">
         <div class="section-head">
             <h2>You May Also Like</h2>
         </div>
@@ -104,5 +215,14 @@ function stepQty(delta) {
     const newVal = Math.max(1, parseInt(input.value) + delta);
     input.value = newVal;
 }
+</script>
+<script>
+document.querySelectorAll('.pd-thumb').forEach(thumb => {
+    thumb.addEventListener('click', () => {
+        document.getElementById('pdMainImage').src = thumb.dataset.src;
+        document.querySelectorAll('.pd-thumb').forEach(t => t.classList.remove('active'));
+        thumb.classList.add('active');
+    });
+});
 </script>
 {% endblock %}

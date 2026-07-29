@@ -38,14 +38,24 @@
     <h2>ORLÉ redefines men's luxury by combining refined craftsmanship with personalised style curation, effortless luxury, and timeless value.</h2>
 
     <div class="mission-grid">
-        <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=500&q=80" alt="">
+        {% if mission_products|length > 0 %}
+            <img src="{{ mission_products[0].image_url | product_image }}" alt="{{ mission_products[0].name }}">
+        {% else %}
+            <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=500&q=80" alt="">
+        {% endif %}
+
         <div class="mission-copy">
             <p>Every collection is carefully curated with premium fabrics, refined tailoring, and versatile essentials that transition seamlessly from everyday wear to elevated occasions.</p>
             <a href="{{ url_for('onboarding') if current_user.is_authenticated else url_for('login') }}">
                 <button class="btn-tan">Create Style Profile</button>
             </a>
         </div>
-        <img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?w=500&q=80" alt="">
+
+        {% if mission_products|length > 1 %}
+            <img src="{{ mission_products[1].image_url | product_image }}" alt="{{ mission_products[1].name }}">
+        {% else %}
+            <img src="https://images.unsplash.com/photo-1520975954732-35dd22299614?w=500&q=80" alt="">
+        {% endif %}
     </div>
 </section>
 

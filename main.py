@@ -6,7 +6,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -468,11 +468,24 @@ def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
 
     is_wishlisted = False
+    reviewable_order_items = []
     if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
-        is_wishlisted = Wishlist.query.filter_by(
-            user_id=current_user.id,
-            product_id=product_id
-        ).first() is not None
+        is_wishlisted = Wishlist.query.filter_by(user_id=current_user.id, product_id=product_id).first() is not None
+
+        reviewable_order_items = (
+            db.session.query(OrderItem)
+            .join(Order)
+            .outerjoin(Review, Review.order_item_id == OrderItem.id)
+            .filter(
+                Order.user_id == current_user.id,
+                OrderItem.product_id == product_id,
+                Order.status == 'delivered',
+                Review.id.is_(None)
+            )
+            .all()
+        )
+
+    reviews = Review.query.filter_by(product_id=product_id).order_by(Review.created_at.desc()).all()
 
     related_products = (
         Product.query
@@ -486,8 +499,49 @@ def product_detail(product_id):
         'product_detail.html',
         product=product,
         is_wishlisted=is_wishlisted,
-        related_products=related_products
+        related_products=related_products,
+        reviews=reviews,
+        reviewable_order_items=reviewable_order_items
     )
+    
+
+@app.route('/catalogue/<int:product_id>/review', methods=['POST'])
+@login_required
+def add_review(product_id):
+    if getattr(current_user, 'is_vendor', False):
+        flash("Vendors can't post reviews.", "error")
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    order_item = OrderItem.query.get_or_404(request.form.get('order_item_id'))
+    order = order_item.order
+
+    if order.user_id != current_user.id or order_item.product_id != product_id:
+        flash("You can only review products you've purchased.", "error")
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    if order.status != 'delivered':
+        flash("You can review this once your order is delivered.", "error")
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    if Review.query.filter_by(order_item_id=order_item.id).first():
+        flash("You've already reviewed this purchase.", "info")
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    rating = int(request.form.get('rating') or 0)
+    if rating < 1 or rating > 5:
+        flash("Please select a rating between 1 and 5.", "error")
+        return redirect(url_for('product_detail', product_id=product_id))
+
+    db.session.add(Review(
+        user_id=current_user.id,
+        product_id=product_id,
+        order_item_id=order_item.id,
+        rating=rating,
+        comment=request.form.get('comment')
+    ))
+    db.session.commit()
+    flash("Thanks for your review.", "success")
+    return redirect(url_for('product_detail', product_id=product_id))
 
 #===============================================Wishlist===================================================================
 
@@ -530,13 +584,30 @@ def cart():
 def cart_add(product_id):
     product = Product.query.get_or_404(product_id)
     quantity = int(request.form.get('quantity') or 1)
+    size = request.form.get('size')
 
-    existing = CartItem.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+    if product.requires_size and not size:
+        flash("Please select a size.", "error")
+        return redirect(request.referrer or url_for('catalogue'))
+
+    available = product.stock_for_size(size)
+
+    existing = CartItem.query.filter_by(user_id=current_user.id, product_id=product_id, size=size).first()
+    already_in_cart = existing.quantity if existing else 0
+
+    if available <= 0:
+        flash(f"{product.name} is out of stock" + (f" in size {size}" if size else "") + ".", "error")
+        return redirect(request.referrer or url_for('catalogue'))
+
+    if already_in_cart + quantity > available:
+        remaining = max(available - already_in_cart, 0)
+        flash(f"Only {available} left in stock" + (f" for size {size}" if size else "") + f" — you already have {already_in_cart} in your bag, so you can add {remaining} more.", "error")
+        return redirect(request.referrer or url_for('catalogue'))
 
     if existing:
         existing.quantity += quantity
     else:
-        db.session.add(CartItem(user_id=current_user.id, product_id=product_id, quantity=quantity))
+        db.session.add(CartItem(user_id=current_user.id, product_id=product_id, quantity=quantity, size=size))
 
     db.session.commit()
     flash(f"{product.name} added to your bag.", "success")
@@ -552,11 +623,18 @@ def cart_update(item_id):
         return redirect(url_for('cart'))
 
     quantity = int(request.form.get('quantity') or 1)
+
     if quantity < 1:
         db.session.delete(item)
-    else:
-        item.quantity = quantity
+        db.session.commit()
+        return redirect(url_for('cart'))
 
+    available = item.product.stock_for_size(item.size)
+    if quantity > available:
+        flash(f"Only {available} left in stock" + (f" for size {item.size}" if item.size else "") + ".", "error")
+        quantity = available if available > 0 else 1  # clamp rather than reject outright
+
+    item.quantity = quantity
     db.session.commit()
     return redirect(url_for('cart'))
 
@@ -800,29 +878,20 @@ def vendor_dashboard():
 @vendor_required
 def vendor_add_product():
     if request.method == 'GET':
-        return render_template('vendor_product_form.html', product=None)
+        return render_template('vendor_product_form.html', product=None, SIZE_CHOICES=SIZE_CHOICES, size_stock={})
 
     image = request.files.get("product_image")
     image_path = None
 
     if image and image.filename:
-
         if not allowed_file(image.filename):
             flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
             return redirect(request.url)
-
-        extension = image.filename.rsplit(".", 1)[1].lower()
-        filename = f"{uuid.uuid4().hex}.{extension}"
-
-        image.save(
-            os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                filename
-            )
-        )
-
-        image_path = f"uploads/products/{filename}"
-
+        image_path = save_product_image(image)
+        
+    if not product.requires_size:
+        product.stock_quantity = int(request.form.get('stock_quantity') or 0)
+        
     product = Product(
         name=request.form.get('name'),
         description=request.form.get('description'),
@@ -832,15 +901,37 @@ def vendor_add_product():
         best_for_body_types=request.form.get('best_for_body_types'),
         best_for_occasions=request.form.get('best_for_occasions'),
         fit_note=request.form.get('fit_note'),
-        vendor_id=current_user.id
+        vendor_id=current_user.id,
+        requires_size=request.form.get('requires_size') == 'on'
     )
-
     db.session.add(product)
-    db.session.commit()
+    db.session.flush()  # gives product.id before commit, so we can attach gallery/size rows
 
+    gallery_files = request.files.getlist("gallery_images")
+    for order, gfile in enumerate(gallery_files):
+        path = save_product_image(gfile)
+        if path:
+            db.session.add(ProductImage(product_id=product.id, image_url=path, display_order=order))
+
+    if product.requires_size:
+        for size in SIZE_CHOICES:
+            qty = request.form.get(f'stock_{size}')
+            if qty and int(qty) > 0:
+                db.session.add(ProductSize(product_id=product.id, size=size, stock_quantity=int(qty)))
+
+    db.session.commit()
     flash("Product listed successfully.", "success")
     return redirect(url_for('vendor_dashboard'))
 
+
+def save_product_image(image):
+    """Returns relative path or None. Reuses your existing UPLOAD_FOLDER/allowed_file setup."""
+    if not image or not image.filename or not allowed_file(image.filename):
+        return None
+    extension = image.filename.rsplit(".", 1)[1].lower()
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    image.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    return f"uploads/products/{filename}"
 
 @app.template_filter('product_image')
 def product_image(image_url):
@@ -861,7 +952,8 @@ def vendor_edit_product(product_id):
         return redirect(url_for('vendor_dashboard'))
 
     if request.method == 'GET':
-        return render_template('vendor_product_form.html', product=product)
+        size_stock = {s.size: s.stock_quantity for s in product.sizes} if product else {}
+        return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, size_stock=size_stock)
 
     product.name = request.form.get('name')
     product.description = request.form.get('description')
@@ -871,27 +963,59 @@ def vendor_edit_product(product_id):
     product.best_for_occasions = request.form.get('best_for_occasions')
     product.fit_note = request.form.get('fit_note')
 
+    # cover image — unchanged behavior, replaces image_url if a new file is uploaded
     image = request.files.get("product_image")
-
     if image and image.filename:
-
         if not allowed_file(image.filename):
             flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
             return redirect(request.url)
+        product.image_url = save_product_image(image)
 
-        extension = image.filename.rsplit(".", 1)[1].lower()
-        filename = f"{uuid.uuid4().hex}.{extension}"
+    # ── Gallery: delete selected existing images ──────────────
+    delete_ids = request.form.getlist('delete_gallery_image')  # checkboxes named delete_gallery_image, value=image.id
+    if delete_ids:
+        ProductImage.query.filter(
+            ProductImage.id.in_(delete_ids),
+            ProductImage.product_id == product.id
+        ).delete(synchronize_session=False)
 
-        image.save(
-            os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                filename
-            )
-        )
+    # ── Gallery: add new images ────────────────────────────────
+    existing_count = ProductImage.query.filter_by(product_id=product.id).count()
+    gallery_files = request.files.getlist("gallery_images")
+    for offset, gfile in enumerate(gallery_files):
+        path = save_product_image(gfile)
+        if path:
+            db.session.add(ProductImage(
+                product_id=product.id,
+                image_url=path,
+                display_order=existing_count + offset
+            ))
 
-        product.image_url = f"uploads/products/{filename}"    
-        db.session.commit()
+    # ── Sizes: toggle requires_size, then add/update/remove per size ──
+    product.requires_size = request.form.get('requires_size') == 'on'
 
+    if product.requires_size:
+        for size in SIZE_CHOICES:
+            qty_raw = request.form.get(f'stock_{size}')
+            qty = int(qty_raw) if qty_raw and qty_raw.isdigit() else 0
+
+            existing_size = ProductSize.query.filter_by(product_id=product.id, size=size).first()
+
+            if qty > 0:
+                if existing_size:
+                    existing_size.stock_quantity = qty
+                else:
+                    db.session.add(ProductSize(product_id=product.id, size=size, stock_quantity=qty))
+            elif existing_size:
+                # quantity was cleared to 0 — remove the row rather than keep a stale 0-stock entry
+                db.session.delete(existing_size)
+    else:
+        # sizing turned off — clear any leftover per-size stock rows
+        ProductSize.query.filter_by(product_id=product.id).delete()
+        if not product.requires_size:
+            product.stock_quantity = int(request.form.get('stock_quantity') or 0)
+
+    db.session.commit()
     flash("Product updated.", "success")
     return redirect(url_for('vendor_dashboard'))
 
@@ -934,7 +1058,7 @@ def vendor_profile():
         Sale.sale_date <= end_date
     ).order_by(Sale.sale_date.asc()).all()
 
-    # Group totals by date for the chart
+    # Group totals by date for the line chart
     daily_totals = {}
     for sale in sales:
         key = sale.sale_date.isoformat()
@@ -942,6 +1066,27 @@ def vendor_profile():
 
     chart_labels = list(daily_totals.keys())
     chart_values = list(daily_totals.values())
+
+    # NEW — group by product for units-sold bar chart + revenue-share doughnut
+    product_totals = {}  # name -> {'units': x, 'revenue': y}
+    for sale in sales:
+        name = sale.product.name if sale.product else 'Unknown'
+        if name not in product_totals:
+            product_totals[name] = {'units': 0, 'revenue': 0}
+        product_totals[name]['units'] += sale.quantity
+        product_totals[name]['revenue'] += sale.amount
+
+    # sort by revenue descending so the busiest products lead the chart
+    sorted_products = sorted(product_totals.items(), key=lambda kv: kv[1]['revenue'], reverse=True)
+    product_labels = [name for name, _ in sorted_products]
+    product_units = [totals['units'] for _, totals in sorted_products]
+    product_revenue = [totals['revenue'] for _, totals in sorted_products]
+
+    # NEW — sales grouped by weekday, to spot which days perform best
+    weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    weekday_totals = [0] * 7
+    for sale in sales:
+        weekday_totals[sale.sale_date.weekday()] += sale.amount
 
     total_revenue = sum(s.amount for s in sales)
     total_units = sum(s.quantity for s in sales)
@@ -955,12 +1100,17 @@ def vendor_profile():
         products=products,
         chart_labels=chart_labels,
         chart_values=chart_values,
+        product_labels=product_labels,
+        product_units=product_units,
+        product_revenue=product_revenue,
+        weekday_names=weekday_names,
+        weekday_totals=weekday_totals,
         total_revenue=total_revenue,
         total_units=total_units,
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat()
     )
-
+    
 
 @app.route('/vendor/sales/add', methods=['POST'])
 @vendor_required
@@ -1041,6 +1191,18 @@ def checkout():
         flash("Your bag is empty.", "error")
         return redirect(url_for('cart'))
 
+    # NEW — re-check stock right before payment, since cart items can sit for a while
+    stock_problems = []
+    for item in items:
+        available = item.product.stock_for_size(item.size)
+        if item.quantity > available:
+            label = f"{item.product.name}" + (f" (size {item.size})" if item.size else "")
+            stock_problems.append(f"{label} — only {available} left, you have {item.quantity} in your bag")
+
+    if stock_problems:
+        flash("Some items in your bag are no longer available in the quantity requested: " + "; ".join(stock_problems), "error")
+        return redirect(url_for('cart'))
+
     total = sum(item.product.price * item.quantity for item in items if item.product)
     saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc()).all()
 
@@ -1091,7 +1253,8 @@ def checkout():
             product_id=item.product_id,
             product_name=item.product.name,
             unit_price=item.product.price,
-            quantity=item.quantity
+            quantity=item.quantity,
+            size=item.size
         ))
 
     razorpay_order = razorpay_client.order.create({
@@ -1144,6 +1307,19 @@ def payment_verify():
     db.session.commit()
 
     # Clear the cart now that payment succeeded
+    for oi in order.items:
+        product = oi.product
+        if not product:
+            continue
+        if product.requires_size and oi.size:
+            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
+            if size_row:
+                size_row.stock_quantity = max(size_row.stock_quantity - oi.quantity, 0)
+        elif not product.requires_size:
+            product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
+    db.session.commit()
+
+    # Clear the cart now that payment succeeded
     CartItem.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
 
@@ -1179,15 +1355,123 @@ def home():
             .all()
         )
 
+    mission_products = (
+        Product.query
+        .filter(Product.image_url.isnot(None))
+        .order_by(Product.created_at.desc())
+        .limit(2)
+        .all()
+    )
+
     return render_template(
         'home.html',
         best_sellers=best_sellers,
         new_arrivals=new_arrivals,
         offer=offer,
         categories=categories,
-        carousel_products=carousel_products
+        carousel_products=carousel_products,
+        mission_products=mission_products
     )
     
+
+#===============================================ADMIN===================================================================
+#===============================================Admin Auth===================================================================
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'GET':
+        return render_template('admin_login.html')
+
+    email = request.form.get('email')
+    password = request.form.get('password')
+
+    if not email or not password:
+        flash("Please enter your email and password.", "error")
+        return render_template('admin_login.html')
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user or not user.check_password(password):
+        flash("Invalid credentials.", "error")
+        return render_template('admin_login.html')
+
+    if not user.is_admin:
+        flash("This account doesn't have admin access.", "error")
+        return render_template('admin_login.html')
+
+    login_user(user)
+    flash(f"Welcome back, {user.name}.", "success")
+    return redirect(url_for('admin_dashboard'))
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or getattr(current_user, 'is_vendor', False) or not getattr(current_user, 'is_admin', False):
+            flash("Admin access required.", "error")
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    total_revenue = db.session.query(db.func.sum(Order.total_amount)).filter(Order.payment_status == 'paid').scalar() or 0
+    total_orders = Order.query.filter(Order.payment_status == 'paid').count()
+    total_users = User.query.count()
+    total_vendors = Vendor.query.count()
+    total_products = Product.query.count()
+
+    orders_by_status = dict(db.session.query(Order.status, db.func.count(Order.id)).group_by(Order.status).all())
+
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    daily = (
+        db.session.query(db.func.date(Order.created_at), db.func.sum(Order.total_amount))
+        .filter(Order.payment_status == 'paid', Order.created_at >= thirty_days_ago)
+        .group_by(db.func.date(Order.created_at))
+        .order_by(db.func.date(Order.created_at))
+        .all()
+    )
+    chart_labels = [str(d[0]) for d in daily]
+    chart_values = [d[1] for d in daily]
+
+    top_products = (
+        db.session.query(
+            OrderItem.product_name,
+            db.func.sum(OrderItem.quantity).label('units'),
+            db.func.sum(OrderItem.unit_price * OrderItem.quantity).label('revenue')
+        )
+        .join(Order).filter(Order.payment_status == 'paid')
+        .group_by(OrderItem.product_name)
+        .order_by(db.desc('revenue'))
+        .limit(5).all()
+    )
+
+    top_vendors = (
+        db.session.query(Vendor.business_name, db.func.sum(OrderItem.unit_price * OrderItem.quantity).label('revenue'))
+        .join(Product, Product.vendor_id == Vendor.id)
+        .join(OrderItem, OrderItem.product_id == Product.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(Order.payment_status == 'paid')
+        .group_by(Vendor.id)
+        .order_by(db.desc('revenue'))
+        .limit(5).all()
+    )
+
+    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+
+    return render_template(
+        'admin_dashboard.html',
+        total_revenue=total_revenue, total_orders=total_orders,
+        total_users=total_users, total_vendors=total_vendors, total_products=total_products,
+        orders_by_status=orders_by_status,
+        chart_labels=chart_labels, chart_values=chart_values,
+        top_products=top_products, top_vendors=top_vendors,
+        recent_orders=recent_orders
+    )
+    
+        
  #===============================================MAIN===================================================================
 
 if __name__ == '__main__':
