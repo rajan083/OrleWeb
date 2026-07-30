@@ -27,11 +27,20 @@
                 <label>Price (₹)</label>
                 <input type="number" name="price" value="{{ product.price if product else '' }}" min="0" required>
             </div>
-            <div class="field" style="flex:1;">
-                <label>Category</label>
-                <input type="text" name="category" value="{{ product.category if product else '' }}" required>
+                <div class="field" style="flex:1;">
+                    <label>Category</label>
+                    <div class="select-wrap">
+                        <select name="category" required>
+                            {% for cat in CATEGORY_CHOICES %}
+                                <option value="{{ cat }}" {{ 'selected' if product and product.category == cat else '' }}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>        
             </div>
-        </div>
 
         <div style="display:flex; gap:16px;">
             <div class="field" style="flex:1;">

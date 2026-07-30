@@ -384,6 +384,8 @@ class ProductImage(db.Model):
 # ── Size chart / per-size stock ─────────────────────────
 SIZE_CHOICES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
+CATEGORY_CHOICES = ['Formal', 'Casual', 'Gym', 'Tuxedo', 'Suit', 'Beach', 'Business']
+
 class ProductSize(db.Model):
     __tablename__ = 'product_sizes'
 

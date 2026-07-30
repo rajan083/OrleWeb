@@ -8,7 +8,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon, SearchHistory
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon, SearchHistory,CATEGORY_CHOICES
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -17,12 +17,19 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
 import razorpay
 import click
+import hmac
+import hashlib
+import json
+from flask_wtf.csrf import CSRFProtect
+
 
 
 
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+csrf = CSRFProtect(app)
 
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads", "products")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
@@ -789,6 +796,43 @@ def order_detail(order_id):
 
 CANCELLABLE_STATUSES = ('pending_payment', 'placed')
 
+def cancel_order_with_refund(order, reason='Order cancellation'):
+    """
+    Restocks items and issues a Razorpay refund if payment was captured.
+    Returns (success: bool, message: str). Does NOT commit — caller commits.
+    Mutates order.status to 'cancelled' only on success.
+    """
+    if order.payment_status == 'paid' and order.razorpay_payment_id:
+        try:
+            razorpay_client.payment.refund(order.razorpay_payment_id, {
+                'amount': order.total_amount * 100,
+                'speed': 'optimum',
+                'notes': {'reason': reason, 'order_id': str(order.id)}
+            })
+        except razorpay.errors.BadRequestError as e:
+            return False, f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this cancellation."
+        except Exception:
+            return False, "Something went wrong initiating the refund. Please contact support — this order has not been cancelled."
+
+        order.payment_status = 'refunded'
+
+    for oi in order.items:
+        product = oi.product
+        if not product:
+            continue
+        if product.requires_size and oi.size:
+            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
+            if size_row:
+                size_row.stock_quantity += oi.quantity
+            else:
+                db.session.add(ProductSize(product_id=product.id, size=oi.size, stock_quantity=oi.quantity))
+        elif not product.requires_size:
+            product.stock_quantity += oi.quantity
+
+    order.status = 'cancelled'
+    return True, "Order cancelled." + (" A refund has been initiated and will reflect in 5-7 business days." if order.payment_status == 'refunded' else "")
+
+
 @app.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def order_cancel(order_id):
@@ -802,47 +846,16 @@ def order_cancel(order_id):
         flash(f"This order can no longer be cancelled — it's already {order.status}.", "error")
         return redirect(url_for('order_detail', order_id=order.id))
 
-    # If payment was captured, attempt a refund before touching anything else.
-    # If the refund fails, we bail out entirely rather than cancelling an order
-    # whose money hasn't actually been returned.
-    if order.payment_status == 'paid' and order.razorpay_payment_id:
-        try:
-            razorpay_client.payment.refund(order.razorpay_payment_id, {
-                'amount': order.total_amount * 100,  # full refund, in paise
-                'speed': 'optimum',
-                'notes': {'reason': 'Customer-initiated cancellation', 'order_id': str(order.id)}
-            })
-        except razorpay.errors.BadRequestError as e:
-            flash(f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this cancellation.", "error")
-            return redirect(url_for('order_detail', order_id=order.id))
-        except Exception:
-            flash("Something went wrong initiating the refund. Please contact support — your order has not been cancelled.", "error")
-            return redirect(url_for('order_detail', order_id=order.id))
-
-        order.payment_status = 'refunded'
-
-    # Refund succeeded (or nothing was charged yet) — now restore stock and finalize.
-    for oi in order.items:
-        product = oi.product
-        if not product:
-            continue
-        if product.requires_size and oi.size:
-            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
-            if size_row:
-                size_row.stock_quantity += oi.quantity
-            else:
-                # size row was deleted since the order was placed (e.g. vendor removed that size) — recreate it
-                db.session.add(ProductSize(product_id=product.id, size=oi.size, stock_quantity=oi.quantity))
-        elif not product.requires_size:
-            product.stock_quantity += oi.quantity
-
-    order.status = 'cancelled'
+    success, message = cancel_order_with_refund(order, reason='Customer-initiated cancellation')
     db.session.commit()
 
-    send_order_email(order, 'cancelled')
-    flash("Your order has been cancelled." + (" A refund has been initiated and will reflect in 5-7 business days." if order.payment_status == 'refunded' else ""), "success")
-    return redirect(url_for('order_detail', order_id=order.id))
+    if success:
+        send_order_email(order, 'cancelled')
+        flash(message, "success")
+    else:
+        flash(message, "error")
 
+    return redirect(url_for('order_detail', order_id=order.id))
 
  #===============================================Recommendations===================================================================
 
@@ -1051,8 +1064,7 @@ def vendor_dashboard():
 def vendor_add_product():
     if request.method == 'GET':
         active_offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
-        return render_template('vendor_product_form.html', product=None, SIZE_CHOICES=SIZE_CHOICES, size_stock={}, active_offers=active_offers)
-
+        return render_template('vendor_product_form.html', product=None, SIZE_CHOICES=SIZE_CHOICES, CATEGORY_CHOICES=CATEGORY_CHOICES, size_stock={}, active_offers=active_offers)
     image = request.files.get("product_image")
     image_path = None
 
@@ -1134,8 +1146,7 @@ def vendor_edit_product(product_id):
     if request.method == 'GET':
         size_stock = {s.size: s.stock_quantity for s in product.sizes} if product else {}
         active_offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
-        return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, size_stock=size_stock, active_offers=active_offers)
-
+        return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, CATEGORY_CHOICES=CATEGORY_CHOICES, size_stock=size_stock, active_offers=active_offers)
     body_types = request.form.getlist('best_for_body_types')
     occasions = request.form.getlist('best_for_occasions')
 
@@ -1355,20 +1366,125 @@ def vendor_orders():
 @vendor_required
 def vendor_update_order_status(order_id):
     order = Order.query.get_or_404(order_id)
-    new_status = request.form.get('status')
 
+    owns_item = db.session.query(OrderItem).join(Product).filter(
+        OrderItem.order_id == order.id,
+        Product.vendor_id == current_user.id
+    ).first()
+    if not owns_item:
+        flash("You don't have permission to update this order.", "error")
+        return redirect(url_for('vendor_orders'))
+
+    new_status = request.form.get('status')
     if new_status not in ('shipped', 'delivered', 'cancelled'):
         flash("Invalid status.", "error")
         return redirect(url_for('vendor_orders'))
 
+    if new_status == 'cancelled':
+        if order.status not in CANCELLABLE_STATUSES:
+            flash(f"This order can no longer be cancelled — it's already {order.status}.", "error")
+            return redirect(url_for('vendor_orders'))
+
+        success, message = cancel_order_with_refund(order, reason='Vendor-initiated cancellation')
+        db.session.commit()
+
+        if success:
+            send_order_email(order, 'cancelled')
+            flash(message, "success")
+        else:
+            flash(message, "error")
+        return redirect(url_for('vendor_orders'))
+
     order.status = new_status
     db.session.commit()
-
     send_order_email(order, new_status)
     flash(f"Order marked as {new_status}.", "success")
     return redirect(url_for('vendor_orders'))
 
+
 #===============================================Checkout & Payment===================================================================
+
+
+@app.route('/webhooks/razorpay', methods=['POST'])
+@csrf.exempt
+def razorpay_webhook():
+    payload = request.get_data()  # raw bytes — signature is computed over the raw body, not parsed JSON
+    signature = request.headers.get('X-Razorpay-Signature', '')
+
+    expected_signature = hmac.new(
+        app.config['RAZORPAY_WEBHOOK_SECRET'].encode('utf-8'),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_signature, signature):
+        return {"error": "Invalid signature"}, 400
+
+    event = json.loads(payload)
+    event_type = event.get('event')
+
+    if event_type == 'payment.captured':
+        handle_payment_captured(event)
+    elif event_type == 'payment.failed':
+        handle_payment_failed(event)
+    # Other events (refund.processed, etc.) can be added here later
+
+    return {"status": "ok"}, 200
+
+
+def handle_payment_captured(event):
+    payment_entity = event['payload']['payment']['entity']
+    razorpay_order_id = payment_entity.get('order_id')
+    razorpay_payment_id = payment_entity.get('id')
+
+    order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+    if not order:
+        return  # unknown order — nothing to do (shouldn't normally happen)
+
+    if order.payment_status == 'paid':
+        return  # already processed — webhook retry, avoid double-decrementing stock
+
+    order.payment_status = 'paid'
+    order.status = 'placed'
+    order.razorpay_payment_id = razorpay_payment_id
+    db.session.commit()
+
+    # Decrement stock — same logic as payment_verify()
+    for oi in order.items:
+        product = oi.product
+        if not product:
+            continue
+        if product.requires_size and oi.size:
+            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
+            if size_row:
+                size_row.stock_quantity = max(size_row.stock_quantity - oi.quantity, 0)
+        elif not product.requires_size:
+            product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
+
+    if order.coupon_code:
+        coupon = Coupon.query.filter_by(code=order.coupon_code).first()
+        if coupon:
+            coupon.times_used += 1
+
+    db.session.commit()
+
+    CartItem.query.filter_by(user_id=order.user_id).delete()
+    db.session.commit()
+
+    send_order_email(order, 'placed')
+
+
+def handle_payment_failed(event):
+    payment_entity = event['payload']['payment']['entity']
+    razorpay_order_id = payment_entity.get('order_id')
+
+    order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+    if not order or order.payment_status == 'paid':
+        return  # unknown order, or already succeeded elsewhere — don't downgrade a paid order
+
+    order.payment_status = 'failed'
+    db.session.commit()
+
 
 @app.route('/checkout', methods=['GET', 'POST'])
 @login_required
@@ -1516,6 +1632,11 @@ def payment_verify():
         flash("You don't have permission to complete this order.", "error")
         return redirect(url_for('cart'))
 
+    # NEW — if the webhook already finalized this order, don't redo the work
+    if order.payment_status == 'paid':
+        flash("Payment successful. Your order has been placed.", "success")
+        return redirect(url_for('order_detail', order_id=order.id))
+
     try:
         razorpay_client.utility.verify_payment_signature({
             'razorpay_order_id': razorpay_order_id,
@@ -1528,13 +1649,11 @@ def payment_verify():
         flash("Payment verification failed. Please try again.", "error")
         return redirect(url_for('checkout'))
 
-    # Signature verified — payment is genuine, finalize the order
     order.payment_status = 'paid'
     order.status = 'placed'
     order.razorpay_payment_id = razorpay_payment_id
     db.session.commit()
 
-    # Decrement stock now that payment is confirmed
     for oi in order.items:
         product = oi.product
         if not product:
@@ -1546,8 +1665,6 @@ def payment_verify():
         elif not product.requires_size:
             product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
 
-    # Record coupon usage now that the order is actually paid — not before,
-    # since a failed/abandoned payment shouldn't burn a redemption
     if order.coupon_code:
         coupon = Coupon.query.filter_by(code=order.coupon_code).first()
         if coupon:
@@ -1555,7 +1672,6 @@ def payment_verify():
 
     db.session.commit()
 
-    # Clear the cart now that payment succeeded
     CartItem.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
 
