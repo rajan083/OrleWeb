@@ -21,7 +21,8 @@ COLOR_HARMONY = {
 # regardless of undertone — a light hand penalty rather than a hard block.
 LOW_CONTRAST_RISK = {
     'fair': {'cream', 'pale_yellow', 'light_grey'},
-    'deep': {'brown', 'charcoal', 'navy'} if False else set(),  # deep skin can carry most darks fine
+    # 'deep' intentionally omitted — deep skin tones can carry most dark
+    # colors well, so no low-contrast penalty applies here.
 }
 
 def color_score(user_skin_tone, user_undertone, product_color):
