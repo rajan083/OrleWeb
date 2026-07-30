@@ -7,12 +7,87 @@
 <div class="catalogue">
     <h1>The Edit</h1>
 
-    <div class="category-filter">
-        <a href="{{ url_for('catalogue') }}" class="{{ 'active' if not active_category else '' }}">All</a>
-        {% for cat in categories %}
-            <a href="{{ url_for('catalogue', category=cat) }}" class="{{ 'active' if active_category == cat else '' }}">{{ cat|title }}</a>
-        {% endfor %}
-    </div>
+    <form method="GET" action="{{ url_for('catalogue') }}" class="catalogue-filter-bar" id="filterForm">
+
+        <div class="category-filter">
+            <a href="{{ url_for('catalogue') }}" class="{{ 'active' if not active_category else '' }}">All</a>
+            {% for cat in categories %}
+                <a href="{{ url_for('catalogue', category=cat) }}" class="{{ 'active' if active_category == cat else '' }}">{{ cat|title }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="filter-controls">
+
+            <div class="filter-group">
+                <label>Price</label>
+                <div class="price-inputs">
+                    <input type="number" name="min_price" placeholder="Min" value="{{ active_min_price or '' }}" min="0">
+                    <span>–</span>
+                    <input type="number" name="max_price" placeholder="Max" value="{{ active_max_price or '' }}" min="0">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Size</label>
+                <div class="select-wrap">
+                    <select name="size">
+                        <option value="">Any</option>
+                        {% for s in SIZE_CHOICES %}
+                            <option value="{{ s }}" {{ 'selected' if active_size == s else '' }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Color</label>
+                <div class="select-wrap">
+                    <select name="color">
+                        <option value="">Any</option>
+                        {% for c in colors %}
+                            <option value="{{ c }}" {{ 'selected' if active_color == c else '' }}>{{ c|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Sort</label>
+                <div class="select-wrap">
+                    <select name="sort">
+                        <option value="newest" {{ 'selected' if active_sort == 'newest' else '' }}>Newest</option>
+                        <option value="price_low" {{ 'selected' if active_sort == 'price_low' else '' }}>Price: Low to High</option>
+                        <option value="price_high" {{ 'selected' if active_sort == 'price_high' else '' }}>Price: High to Low</option>
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            {% if active_category %}
+                <input type="hidden" name="category" value="{{ active_category }}">
+            {% endif %}
+
+            <div class="filter-group">
+                <label class="filter-label-spacer">&nbsp;</label>
+                <button type="submit" class="filter-apply-btn">Apply</button>
+            </div>
+            {% if active_min_price or active_max_price or active_size or active_color or active_sort != 'newest' %}
+            <div class="filter-group">
+                <label class="filter-label-spacer">&nbsp;</label>
+                <a href="{{ url_for('catalogue', category=active_category) if active_category else url_for('catalogue') }}" class="text-link clear-filters-link">Clear filters</a>
+            </div>
+            {% endif %}
+        </div>
+
+    </form>
 
     {% if products %}
         <div class="product-grid">
@@ -35,6 +110,19 @@
                 </div>
             {% endfor %}
         </div>
+
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination-row">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('catalogue', page=pagination.prev_num, category=active_category, min_price=active_min_price, max_price=active_max_price, size=active_size, color=active_color, sort=active_sort) }}" class="pagination-link">← Prev</a>
+            {% endif %}
+            <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+                <a href="{{ url_for('catalogue', page=pagination.next_num, category=active_category, min_price=active_min_price, max_price=active_max_price, size=active_size, color=active_color, sort=active_sort) }}" class="pagination-link">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
     {% else %}
         <p class="onboarding-sub">No pieces in this category yet.</p>
     {% endif %}

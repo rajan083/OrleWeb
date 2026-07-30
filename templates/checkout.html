@@ -4,10 +4,13 @@
 <div class="onboarding">
     <h1>Checkout</h1>
 
-    <div class="profile-card">
+<div class="profile-card">
         {% for item in items %}
             <div class="option-row">
-                <span>{{ item.product.name }}{% if item.size %} <span class="onboarding-sub">(Size: {{ item.size }})</span>{% endif %} × {{ item.quantity }}</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="{{ item.product.image_url | product_image }}" alt="{{ item.product.name }}" class="order-thumb">
+                    <span>{{ item.product.name }}{% if item.size %} <span class="onboarding-sub" style="margin-bottom:0;">(Size: {{ item.size }})</span>{% endif %} × {{ item.quantity }}</span>
+                </div>
                 <strong>₹{{ "{:,}".format(item.product.price * item.quantity) }}</strong>
             </div>
         {% endfor %}

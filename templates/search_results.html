@@ -9,13 +9,30 @@
     <div class="section-head">
         {% if query %}
             <h2>Results for "{{ query }}"</h2>
-            <span class="onboarding-sub">{{ products|length }} item{{ 's' if products|length != 1 }} found</span>
+            <span class="onboarding-sub">{{ pagination.total if pagination else products|length }} item{{ 's' if (pagination.total if pagination else products|length) != 1 }} found</span>
         {% else %}
             <h2>Search</h2>
         {% endif %}
     </div>
 
     {% if query and products %}
+        <div class="search-sort-row">
+            <form method="GET" action="{{ url_for('search') }}" class="inline-sort-form">
+                <input type="hidden" name="q" value="{{ query }}">
+                <label for="sortSelect">Sort</label>
+                <div class="select-wrap">
+                    <select name="sort" id="sortSelect" onchange="this.form.submit()">
+                        <option value="newest" {{ 'selected' if active_sort == 'newest' else '' }}>Newest</option>
+                        <option value="price_low" {{ 'selected' if active_sort == 'price_low' else '' }}>Price: Low to High</option>
+                        <option value="price_high" {{ 'selected' if active_sort == 'price_high' else '' }}>Price: High to Low</option>
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </form>
+        </div>
+
         <div class="product-grid">
             {% for product in products %}
                 <div class="product-card">
@@ -36,6 +53,18 @@
                 </div>
             {% endfor %}
         </div>
+
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination-row">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('search', page=pagination.prev_num, q=query, sort=active_sort) }}" class="pagination-link">← Prev</a>
+            {% endif %}
+            <span class="pagination-status">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+                <a href="{{ url_for('search', page=pagination.next_num, q=query, sort=active_sort) }}" class="pagination-link">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
 
     {% elif query and not products %}
         <p class="onboarding-sub">No pieces found for "{{ query }}". Try a different term, or <a href="{{ url_for('catalogue') }}">browse The Edit</a>.</p>

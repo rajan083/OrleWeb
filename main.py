@@ -454,20 +454,61 @@ def dashboard():
 @app.route('/catalogue')
 def catalogue():
     category = request.args.get('category')
+    min_price = request.args.get('min_price', type=int)
+    max_price = request.args.get('max_price', type=int)
+    size = request.args.get('size')
+    color = request.args.get('color')
+    sort = request.args.get('sort', 'newest')
+    page = request.args.get('page', 1, type=int)
 
     query = Product.query
     if category:
         query = query.filter_by(category=category)
+    if min_price is not None:
+        query = query.filter(Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Product.price <= max_price)
+    if color:
+        query = query.filter_by(color=color)
+    if size:
+        # sized products: must have that size in stock. unsized products: excluded when a size filter is active.
+        query = query.join(ProductSize).filter(ProductSize.size == size, ProductSize.stock_quantity > 0)
 
-    products = query.order_by(Product.created_at.desc()).all()
+    sort_options = {
+        'newest': Product.created_at.desc(),
+        'price_low': Product.price.asc(),
+        'price_high': Product.price.desc(),
+    }
+    query = query.order_by(sort_options.get(sort, Product.created_at.desc()))
+
+    pagination = query.paginate(page=page, per_page=24, error_out=False)
+    products = pagination.items
+
     categories = db.session.query(Product.category).distinct().all()
     categories = [c[0] for c in categories]
+
+    colors = db.session.query(Product.color).filter(Product.color.isnot(None)).distinct().all()
+    colors = [c[0] for c in colors]
 
     wishlisted_ids = set()
     if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
         wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
 
-    return render_template('catalogue.html', products=products, categories=categories, active_category=category, wishlisted_ids=wishlisted_ids)
+    return render_template(
+        'catalogue.html',
+        products=products,
+        categories=categories,
+        colors=colors,
+        active_category=category,
+        active_min_price=min_price,
+        active_max_price=max_price,
+        active_size=size,
+        active_color=color,
+        active_sort=sort,
+        pagination=pagination,
+        wishlisted_ids=wishlisted_ids,
+        SIZE_CHOICES=SIZE_CHOICES
+    )
 
 
 @app.route('/catalogue/<int:product_id>')
@@ -1004,14 +1045,19 @@ def vendor_add_product():
 
     requires_size = request.form.get('requires_size') == 'on'
 
+    body_types = request.form.getlist('best_for_body_types')
+    occasions = request.form.getlist('best_for_occasions')
+
     product = Product(
         name=request.form.get('name'),
         description=request.form.get('description'),
         price=int(request.form.get('price') or 0),
         category=request.form.get('category'),
         image_url=image_path,
-        best_for_body_types=request.form.get('best_for_body_types'),
-        best_for_occasions=request.form.get('best_for_occasions'),
+        best_for_body_types=','.join(body_types) if body_types else None,
+        best_for_occasions=','.join(occasions) if occasions else None,
+        color=request.form.get('color') or None,
+        color_undertone=request.form.get('color_undertone') or None,
         fit_note=request.form.get('fit_note'),
         vendor_id=current_user.id,
         requires_size=requires_size,
@@ -1068,12 +1114,17 @@ def vendor_edit_product(product_id):
         size_stock = {s.size: s.stock_quantity for s in product.sizes} if product else {}
         return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, size_stock=size_stock)
 
+    body_types = request.form.getlist('best_for_body_types')
+    occasions = request.form.getlist('best_for_occasions')
+
     product.name = request.form.get('name')
     product.description = request.form.get('description')
     product.price = int(request.form.get('price') or 0)
     product.category = request.form.get('category')
-    product.best_for_body_types = request.form.get('best_for_body_types')
-    product.best_for_occasions = request.form.get('best_for_occasions')
+    product.best_for_body_types = ','.join(body_types) if body_types else None
+    product.best_for_occasions = ','.join(occasions) if occasions else None
+    product.color = request.form.get('color') or None
+    product.color_undertone = request.form.get('color_undertone') or None
     product.fit_note = request.form.get('fit_note')
 
     # cover image — unchanged behavior, replaces image_url if a new file is uploaded
@@ -1317,7 +1368,8 @@ def checkout():
         return redirect(url_for('cart'))
 
     total = sum(item.product.price * item.quantity for item in items if item.product)
-    
+
+    # ── Apply coupon (mirrors cart()) ──────────────────────────
     discount = 0
     coupon = None
     coupon_code = session.get('coupon_code')
@@ -1331,12 +1383,12 @@ def checkout():
                 coupon = None
                 session.pop('coupon_code', None)
     final_total = total - discount
+    # ─────────────────────────────────────────────────────────
 
-    
     saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc()).all()
 
     if request.method == 'GET':
-        return render_template('checkout.html', items=items, final_total=final_total, saved_addresses=saved_addresses)
+        return render_template('checkout.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon, saved_addresses=saved_addresses)
 
     address_id = request.form.get('address_id')
 
@@ -1347,7 +1399,7 @@ def checkout():
 
         if not shipping_name or not shipping_address or not shipping_phone:
             flash("Please fill in all shipping details.", "error")
-            return render_template('checkout.html', items=items, total=total, saved_addresses=saved_addresses)
+            return render_template('checkout.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon, saved_addresses=saved_addresses)  # keep this in sync with the GET branch above
 
         if request.form.get('save_address') == 'on':
             if not saved_addresses:  # first address automatically becomes default
@@ -1366,7 +1418,10 @@ def checkout():
 
     order = Order(
         user_id=current_user.id,
-        total_amount=total,
+        subtotal_amount = total,
+        discount_amount = discount,
+        total_amount=final_total,
+        coupon_code=coupon.code if coupon else None,
         status='pending_payment',
         payment_status='pending',
         shipping_name=shipping_name,
@@ -1633,24 +1688,36 @@ def admin_delete_coupon(coupon_id):
 @app.route('/search')
 def search():
     query = request.args.get('q', '').strip()
+    sort = request.args.get('sort', 'newest')
+    page = request.args.get('page', 1, type=int)
 
     wishlisted_ids = set()
     if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
         wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
 
     if not query:
-        return render_template('search_results.html', products=[], query='', wishlisted_ids=wishlisted_ids)
+        return render_template('search_results.html', products=[], query='', pagination=None, active_sort=sort, wishlisted_ids=wishlisted_ids)
 
     like_pattern = f"%{query}%"
-    products = Product.query.filter(
+    products_query = Product.query.filter(
         or_(
             Product.name.ilike(like_pattern),
             Product.description.ilike(like_pattern),
             Product.category.ilike(like_pattern)
         )
-    ).order_by(Product.created_at.desc()).all()
+    )
 
-    return render_template('search_results.html', products=products, query=query, wishlisted_ids=wishlisted_ids)
+    sort_options = {
+        'newest': Product.created_at.desc(),
+        'price_low': Product.price.asc(),
+        'price_high': Product.price.desc(),
+    }
+    products_query = products_query.order_by(sort_options.get(sort, Product.created_at.desc()))
+
+    pagination = products_query.paginate(page=page, per_page=24, error_out=False)
+    products = pagination.items
+
+    return render_template('search_results.html', products=products, query=query, pagination=pagination, active_sort=sort, wishlisted_ids=wishlisted_ids)
 
 #===============================================Home===================================================================
 

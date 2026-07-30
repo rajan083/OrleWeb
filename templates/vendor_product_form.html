@@ -33,14 +33,86 @@
             </div>
         </div>
 
-        <div class="field">
+        <div style="display:flex; gap:16px;">
+            <div class="field" style="flex:1;">
+                <label>Color</label>
+                <div class="select-wrap">
+                    <select name="color">
+                        <option value="">Not specified</option>
+                        {% for value, label in [
+                            ('navy','Navy'), ('burgundy','Burgundy'), ('emerald','Emerald'),
+                            ('charcoal','Charcoal'), ('plum','Plum'), ('ice_blue','Ice Blue'),
+                            ('olive','Olive'), ('camel','Camel'), ('rust','Rust'),
+                            ('cream','Cream'), ('warm_grey','Warm Grey'), ('grey','Grey'),
+                            ('cobalt','Cobalt'), ('royal_blue','Royal Blue'), ('tan','Tan'),
+                            ('terracotta','Terracotta'), ('mustard','Mustard'), ('white','White'),
+                            ('fuchsia','Fuchsia'), ('coral','Coral'), ('orange','Orange'),
+                            ('gold','Gold'), ('burnt_orange','Burnt Orange'), ('pale_yellow','Pale Yellow'),
+                            ('light_grey','Light Grey'), ('brown','Brown')
+                        ] %}
+                            <option value="{{ value }}" {{ 'selected' if product and product.color == value else '' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <div class="field" style="flex:1;">
+                <label>Color Undertone</label>
+                <div class="select-wrap">
+                    <select name="color_undertone">
+                        <option value="">Not specified</option>
+                        <option value="warm" {{ 'selected' if product and product.color_undertone == 'warm' else '' }}>Warm</option>
+                        <option value="cool" {{ 'selected' if product and product.color_undertone == 'cool' else '' }}>Cool</option>
+                        <option value="neutral" {{ 'selected' if product and product.color_undertone == 'neutral' else '' }}>Neutral</option>
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+            <div class="field">
             <label>Best for body types</label>
-            <input type="text" name="best_for_body_types" value="{{ product.best_for_body_types if product else '' }}" placeholder="e.g. athletic, slim">
+            <div class="vpf-checkbox-grid">
+                {% set current_body_types = (product.best_for_body_types.split(',') if product and product.best_for_body_types else []) %}
+                <label class="vpf-checkbox-label">
+                    <input type="checkbox" name="best_for_body_types" value="slim" {{ 'checked' if 'slim' in current_body_types else '' }}>
+                    Slim
+                </label>
+                <label class="vpf-checkbox-label">
+                    <input type="checkbox" name="best_for_body_types" value="athletic" {{ 'checked' if 'athletic' in current_body_types else '' }}>
+                    Athletic
+                </label>
+                <label class="vpf-checkbox-label">
+                    <input type="checkbox" name="best_for_body_types" value="average" {{ 'checked' if 'average' in current_body_types else '' }}>
+                    Average
+                </label>
+                <label class="vpf-checkbox-label">
+                    <input type="checkbox" name="best_for_body_types" value="broad" {{ 'checked' if 'broad' in current_body_types else '' }}>
+                    Broad
+                </label>
+            </div>
         </div>
 
         <div class="field">
             <label>Best for occasions</label>
-            <input type="text" name="best_for_occasions" value="{{ product.best_for_occasions if product else '' }}" placeholder="e.g. formal, wedding">
+            <div class="vpf-checkbox-grid">
+                {% set current_occasions = (product.best_for_occasions.split(',') if product and product.best_for_occasions else []) %}
+                {% for occ_value, occ_label in [
+                    ('any', 'Any occasion'), ('home', 'Home'), ('wedding', 'Wedding ceremony'),
+                    ('date', 'Date'), ('party', 'Party'), ('business', 'Business'),
+                    ('travel', 'Trip and travel'), ('workout', 'Workout'),
+                    ('festival', 'Festival'), ('beach', 'Beach')
+                ] %}
+                    <label class="vpf-checkbox-label">
+                        <input type="checkbox" name="best_for_occasions" value="{{ occ_value }}" {{ 'checked' if occ_value in current_occasions else '' }}>
+                        {{ occ_label }}
+                    </label>
+                {% endfor %}
+            </div>
         </div>
 
         <div class="field">

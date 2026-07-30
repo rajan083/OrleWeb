@@ -4,7 +4,25 @@
 <div class="form-wrapper">
     <div class="form-card">
         <h1>Complete Payment</h1>
-        <p class="onboarding-sub">Order #{{ order.id }} · ₹{{ "{:,}".format(order.total_amount) }}</p>
+        <p class="onboarding-sub">Order #{{ order.id }}</p>
+
+        <div class="payment-summary">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span>₹{{ "{:,}".format(order.subtotal_amount) }}</span>
+            </div>
+            {% if order.discount_amount %}
+            <div class="summary-row discount-row">
+                <span>Coupon{% if order.coupon_code %} ({{ order.coupon_code }}){% endif %}</span>
+                <span>−₹{{ "{:,}".format(order.discount_amount) }}</span>
+            </div>
+            {% endif %}
+            <div class="summary-row total-row">
+                <span>Total</span>
+                <span>₹{{ "{:,}".format(order.total_amount) }}</span>
+            </div>
+        </div>
+
         <button id="payButton" class="btn-save">Pay Now</button>
     </div>
 </div>

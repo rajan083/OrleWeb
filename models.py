@@ -247,6 +247,7 @@ class Order(db.Model):
     shipping_phone = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    subtotal_amount = db.Column(db.Integer, nullable=False, default=0)
     coupon_code = db.Column(db.String(30), nullable=True)
     discount_amount = db.Column(db.Integer, default=0)
 
@@ -264,6 +265,7 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     size = db.Column(db.String(10), nullable=True)  # NEW — snapshot, same pattern as product_name/unit_price
     product = db.relationship('Product')
+    
     
 class Address(db.Model):
     __tablename__ = 'addresses'
