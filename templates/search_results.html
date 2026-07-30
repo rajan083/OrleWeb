@@ -47,8 +47,19 @@
                         <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
                         <div class="product-card-body">
                             <h3>{{ product.name }}</h3>
-                            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                        </div>
+                            {% if product.offer and product.offer.is_active %}
+                                <a href="{{ url_for('offer_detail', offer_id=product.offer.id) }}" class="offer-badge" onclick="event.stopPropagation();">{{ product.offer.title }}</a>
+                            {% endif %}
+                            {% if product.has_discount %}
+                                <p class="product-price">
+                                    <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                                    <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                                    <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                                </p>
+                            {% else %}
+                                <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                            {% endif %}
+                        </div>              
                     </a>
                 </div>
             {% endfor %}

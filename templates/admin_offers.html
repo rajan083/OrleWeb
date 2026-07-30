@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Offers · ORLE Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Offers</h1>
+        <p>Promotional banners shown on the homepage and dashboard.</p>
+    </div>
+
+    <div class="admin-quick-links">
+        <a href="{{ url_for('admin_add_offer') }}" class="btn-tan">+ Add Offer</a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>All Offers</h2>
+            <span class="text-link">{{ offers|length }} total</span>
+        </div>
+
+        {% if offers %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Title</th>
+                        <th>Subtitle</th>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th class="num"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for offer in offers %}
+                        <tr>
+                            <td>
+                                <img src="{{ offer.image_url | product_image }}" alt="{{ offer.title }}" class="admin-offer-thumb">
+                            </td>
+                            <td>{{ offer.title }}</td>
+                            <td>{{ offer.subtitle or '—' }}</td>
+                            <td>{{ offer.display_order }}</td>
+                            <td>
+                                <span class="order-status {{ 'status-placed' if offer.is_active else 'status-cancelled' }}">
+                                    {{ 'Active' if offer.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="num">
+                                <div class="admin-row-actions">
+                                    <a href="{{ url_for('admin_edit_offer', offer_id=offer.id) }}" class="text-link">Edit</a>
+
+                                    <form action="{{ url_for('admin_toggle_offer', offer_id=offer.id) }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="text-link" style="border:none; background:none; cursor:pointer;">
+                                            {{ 'Deactivate' if offer.is_active else 'Activate' }}
+                                        </button>
+                                    </form>
+
+                                    <form action="{{ url_for('admin_delete_offer', offer_id=offer.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this offer? This cannot be undone.');">
+                                        <button type="submit" class="text-link" style="border:none; background:none; cursor:pointer; color:#b91c1c;">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">No offers yet. Create one to feature it on the homepage.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

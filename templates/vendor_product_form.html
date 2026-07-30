@@ -48,7 +48,7 @@
                             ('terracotta','Terracotta'), ('mustard','Mustard'), ('white','White'),
                             ('fuchsia','Fuchsia'), ('coral','Coral'), ('orange','Orange'),
                             ('gold','Gold'), ('burnt_orange','Burnt Orange'), ('pale_yellow','Pale Yellow'),
-                            ('light_grey','Light Grey'), ('brown','Brown')
+                            ('light_grey','Light Grey'), ('brown','Brown'), ('red','Red'), ('black','Black')
                         ] %}
                             <option value="{{ value }}" {{ 'selected' if product and product.color == value else '' }}>{{ label }}</option>
                         {% endfor %}
@@ -73,6 +73,28 @@
                 </div>
             </div>
         </div>
+
+            <div style="display:flex; gap:16px;">
+                <div class="field" style="flex:1;">
+                    <label>Discount (%)</label>
+                    <input type="number" name="discount_percent" min="0" max="100" value="{{ product.discount_percent if product else 0 }}">
+                    <p class="onboarding-sub" style="margin-top:4px;">Leave at 0 for no discount.</p>
+                </div>
+                <div class="field" style="flex:1;">
+                    <label>Tag to Offer</label>
+                    <div class="select-wrap">
+                        <select name="offer_id">
+                            <option value="">None</option>
+                            {% for o in active_offers %}
+                                <option value="{{ o.id }}" {{ 'selected' if product and product.offer_id == o.id else '' }}>{{ o.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+            </div>
 
             <div class="field">
             <label>Best for body types</label>

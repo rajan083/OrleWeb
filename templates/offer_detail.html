@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_icons.html" import heart_icon %}
+
+{% block title %}{{ offer.title }} — ORLE{% endblock %}
+
+{% block content %}
+<div class="catalogue">
+    <div class="offer-hero">
+        <img src="{{ offer.image_url | product_image }}" alt="{{ offer.title }}" class="offer-hero-img">
+        <div class="offer-hero-text">
+            <h1>{{ offer.title }}</h1>
+            {% if offer.subtitle %}<p class="onboarding-sub">{{ offer.subtitle }}</p>{% endif %}
+        </div>
+    </div>
+
+    {% if products %}
+        <div class="product-grid">
+            {% for product in products %}
+                <div class="product-card">
+                    {% if current_user.is_authenticated and not current_user.is_vendor %}
+                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                            {{ heart_icon() }}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                        <div class="product-card-body">
+                            <h3>{{ product.name }}</h3>
+                            {% if product.has_discount %}
+                                <p class="product-price">
+                                    <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                                    <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                                </p>
+                            {% else %}
+                                <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="onboarding-sub">No products are currently tagged to this offer.</p>
+    {% endif %}
+</div>
+{% endblock %}

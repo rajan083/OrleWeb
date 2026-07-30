@@ -11,7 +11,7 @@
                     <img src="{{ item.product.image_url | product_image }}" alt="{{ item.product.name }}" class="order-thumb">
                     <span>{{ item.product.name }}{% if item.size %} <span class="onboarding-sub" style="margin-bottom:0;">(Size: {{ item.size }})</span>{% endif %} × {{ item.quantity }}</span>
                 </div>
-                <strong>₹{{ "{:,}".format(item.product.price * item.quantity) }}</strong>
+                <strong>₹{{ "{:,}".format(item.product.discounted_price * item.quantity) }}</strong>
             </div>
         {% endfor %}
         <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(final_total) }}</strong></div>
@@ -21,27 +21,50 @@
         <h2>Shipping Address</h2>
 
         {% if saved_addresses %}
-            <div class="option-list">
+            <div class="address-box-grid">
                 {% for address in saved_addresses %}
-                <label class="option-row">
-                    <input type="radio" name="address_id" value="{{ address.id }}" {{ 'checked' if address.is_default else '' }} onclick="toggleNewAddressForm(false)">
-                    <div>
-                        <strong>{{ address.full_name }}</strong> {% if address.is_default %}<span class="order-status status-delivered" style="margin-left:6px;">Default</span>{% endif %}
-                        <p class="onboarding-sub" style="margin:2px 0 0;">{{ address.address_line }} · {{ address.phone }}</p>
+                <label class="address-box {{ 'address-box-selected' if address.is_default else '' }}">
+                    <input type="radio" name="address_id" value="{{ address.id }}" {{ 'checked' if address.is_default else '' }} onclick="selectAddressBox(this)">
+                    <div class="address-box-head">
+                        <strong>{{ address.full_name }}</strong>
+                        {% if address.is_default %}<span class="order-status status-delivered">Default</span>{% endif %}
                     </div>
+                    <p class="onboarding-sub">{{ address.full_address }}</p>
+                    <p class="onboarding-sub">{{ address.phone }}</p>
                 </label>
                 {% endfor %}
-                <label class="option-row">
-                    <input type="radio" name="address_id" value="new" onclick="toggleNewAddressForm(true)" {{ 'checked' if not saved_addresses else '' }}>
-                    <span>Use a new address</span>
+
+                <label class="address-box address-box-new {{ 'address-box-selected' if not saved_addresses else '' }}">
+                    <input type="radio" name="address_id" value="new" onclick="selectAddressBox(this)">
+                    <div class="address-box-head">
+                        <strong>+ Use a new address</strong>
+                    </div>
                 </label>
             </div>
         {% endif %}
 
         <div id="newAddressFields" style="{{ 'display:none;' if saved_addresses else '' }} margin-top:16px;">
             <div class="field"><label>Full name</label><input type="text" name="shipping_name" {{ 'required' if not saved_addresses else '' }}></div>
-            <div class="field"><label>Address</label><input type="text" name="shipping_address" {{ 'required' if not saved_addresses else '' }}></div>
+
+            <div style="display:flex; gap:16px;">
+                <div class="field" style="flex:1;"><label>House / Flat No.</label><input type="text" name="house_number" {{ 'required' if not saved_addresses else '' }}></div>
+                <div class="field" style="flex:2;"><label>Street</label><input type="text" name="street" {{ 'required' if not saved_addresses else '' }}></div>
+            </div>
+
+            <div class="field"><label>Area / Landmark (optional)</label><input type="text" name="area"></div>
+
+            <div style="display:flex; gap:16px;">
+                <div class="field" style="flex:1;"><label>City</label><input type="text" name="city" {{ 'required' if not saved_addresses else '' }}></div>
+                <div class="field" style="flex:1;"><label>District (optional)</label><input type="text" name="district"></div>
+            </div>
+
+            <div style="display:flex; gap:16px;">
+                <div class="field" style="flex:1;"><label>State</label><input type="text" name="state" {{ 'required' if not saved_addresses else '' }}></div>
+                <div class="field" style="flex:1;"><label>PIN Code</label><input type="text" name="pincode" pattern="[0-9]{6}" maxlength="6" {{ 'required' if not saved_addresses else '' }}></div>
+            </div>
+
             <div class="field"><label>Phone</label><input type="tel" name="shipping_phone" {{ 'required' if not saved_addresses else '' }}></div>
+
             <label class="option-row" style="border:none; padding:8px 0;">
                 <input type="checkbox" name="save_address" style="width:auto;">
                 <span style="font-size:13px;">Save this address for next time</span>
@@ -53,9 +76,15 @@
 </div>
 
 <script>
+function selectAddressBox(clickedInput) {
+    document.querySelectorAll('.address-box').forEach(box => box.classList.remove('address-box-selected'));
+    clickedInput.closest('.address-box').classList.add('address-box-selected');
+    toggleNewAddressForm(clickedInput.value === 'new');
+}
+
 function toggleNewAddressForm(show) {
     const fields = document.getElementById('newAddressFields');
-    const inputs = fields.querySelectorAll('input[name="shipping_name"], input[name="shipping_address"], input[name="shipping_phone"]');
+    const inputs = fields.querySelectorAll('input[name="shipping_name"], input[name="house_number"], input[name="street"], input[name="city"], input[name="state"], input[name="pincode"], input[name="shipping_phone"]');
     fields.style.display = show ? 'block' : 'none';
     inputs.forEach(input => input.required = show);
 }

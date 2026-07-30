@@ -8,7 +8,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon, SearchHistory
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -16,6 +16,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
 import razorpay
+import click
 
 
 
@@ -364,11 +365,17 @@ def address_add():
 
     full_name = request.form.get('full_name')
     phone = request.form.get('phone')
-    address_line = request.form.get('address_line')
+    house_number = request.form.get('house_number')
+    street = request.form.get('street')
+    area = request.form.get('area')
+    city = request.form.get('city')
+    district = request.form.get('district')
+    state = request.form.get('state')
+    pincode = request.form.get('pincode')
     make_default = request.form.get('is_default') == 'on'
 
-    if not full_name or not phone or not address_line:
-        flash("Please fill in all address fields.", "error")
+    if not full_name or not phone or not house_number or not street or not city or not state or not pincode:
+        flash("Please fill in all required address fields.", "error")
         return render_template('address_form.html', address=None)
 
     if make_default:
@@ -378,7 +385,13 @@ def address_add():
         user_id=current_user.id,
         full_name=full_name,
         phone=phone,
-        address_line=address_line,
+        house_number=house_number,
+        street=street,
+        area=area,
+        city=city,
+        district=district,
+        state=state,
+        pincode=pincode,
         is_default=make_default
     )
     db.session.add(new_address)
@@ -401,7 +414,13 @@ def address_edit(address_id):
 
     address.full_name = request.form.get('full_name')
     address.phone = request.form.get('phone')
-    address.address_line = request.form.get('address_line')
+    address.house_number = request.form.get('house_number')
+    address.street = request.form.get('street')
+    address.area = request.form.get('area')
+    address.city = request.form.get('city')
+    address.district = request.form.get('district')
+    address.state = request.form.get('state')
+    address.pincode = request.form.get('pincode')
 
     if request.form.get('is_default') == 'on':
         Address.query.filter_by(user_id=current_user.id).update({'is_default': False})
@@ -623,8 +642,7 @@ def wishlist_toggle(product_id):
 @login_required
 def cart():
     items = CartItem.query.filter_by(user_id=current_user.id).all()
-    total = sum(item.product.price * item.quantity for item in items if item.product)
-
+    total = sum(item.product.discounted_price * item.quantity for item in items if item.product)
     discount = 0
     coupon = None
     coupon_code = session.get('coupon_code')
@@ -647,8 +665,8 @@ def cart():
 def apply_coupon():
     code = (request.form.get('coupon_code') or '').strip().upper()
     items = CartItem.query.filter_by(user_id=current_user.id).all()
-    total = sum(item.product.price * item.quantity for item in items if item.product)
-
+    total = sum(item.product.discounted_price * item.quantity for item in items if item.product)
+    
     coupon = Coupon.query.filter_by(code=code).first()
     if not coupon:
         flash("Invalid coupon code.", "error")
@@ -1032,7 +1050,8 @@ def vendor_dashboard():
 @vendor_required
 def vendor_add_product():
     if request.method == 'GET':
-        return render_template('vendor_product_form.html', product=None, SIZE_CHOICES=SIZE_CHOICES, size_stock={})
+        active_offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
+        return render_template('vendor_product_form.html', product=None, SIZE_CHOICES=SIZE_CHOICES, size_stock={}, active_offers=active_offers)
 
     image = request.files.get("product_image")
     image_path = None
@@ -1061,7 +1080,9 @@ def vendor_add_product():
         fit_note=request.form.get('fit_note'),
         vendor_id=current_user.id,
         requires_size=requires_size,
-        stock_quantity=0 if requires_size else int(request.form.get('stock_quantity') or 0)
+        stock_quantity=0 if requires_size else int(request.form.get('stock_quantity') or 0),
+        discount_percent=int(request.form.get('discount_percent') or 0),
+        offer_id=int(request.form.get('offer_id')) if request.form.get('offer_id') else None,
     )
     db.session.add(product)
     db.session.flush()
@@ -1112,7 +1133,8 @@ def vendor_edit_product(product_id):
 
     if request.method == 'GET':
         size_stock = {s.size: s.stock_quantity for s in product.sizes} if product else {}
-        return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, size_stock=size_stock)
+        active_offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
+        return render_template('vendor_product_form.html', product=product, SIZE_CHOICES=SIZE_CHOICES, size_stock=size_stock, active_offers=active_offers)
 
     body_types = request.form.getlist('best_for_body_types')
     occasions = request.form.getlist('best_for_occasions')
@@ -1125,6 +1147,8 @@ def vendor_edit_product(product_id):
     product.best_for_occasions = ','.join(occasions) if occasions else None
     product.color = request.form.get('color') or None
     product.color_undertone = request.form.get('color_undertone') or None
+    product.discount_percent = max(0, min(int(request.form.get('discount_percent') or 0), 100))
+    product.offer_id = int(request.form.get('offer_id')) if request.form.get('offer_id') else None
     product.fit_note = request.form.get('fit_note')
 
     # cover image — unchanged behavior, replaces image_url if a new file is uploaded
@@ -1367,8 +1391,8 @@ def checkout():
         flash("Some items in your bag are no longer available in the quantity requested: " + "; ".join(stock_problems), "error")
         return redirect(url_for('cart'))
 
-    total = sum(item.product.price * item.quantity for item in items if item.product)
-
+    total = sum(item.product.discounted_price * item.quantity for item in items if item.product)
+    
     # ── Apply coupon (mirrors cart()) ──────────────────────────
     discount = 0
     coupon = None
@@ -1394,18 +1418,38 @@ def checkout():
 
     if not address_id or address_id == 'new':
         shipping_name = request.form.get('shipping_name')
-        shipping_address = request.form.get('shipping_address')
+        house_number = request.form.get('house_number')
+        street = request.form.get('street')
+        area = request.form.get('area')
+        city = request.form.get('city')
+        district = request.form.get('district')
+        state = request.form.get('state')
+        pincode = request.form.get('pincode')
         shipping_phone = request.form.get('shipping_phone')
 
-        if not shipping_name or not shipping_address or not shipping_phone:
+        if not shipping_name or not house_number or not street or not city or not state or not pincode or not shipping_phone:
             flash("Please fill in all shipping details.", "error")
-            return render_template('checkout.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon, saved_addresses=saved_addresses)  # keep this in sync with the GET branch above
+            return render_template('checkout.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon, saved_addresses=saved_addresses)
+
+        # Build the combined address string the same way Address.full_address does
+        parts = [house_number, street]
+        if area:
+            parts.append(area)
+        parts.append(city)
+        if district and district.lower() != city.lower():
+            parts.append(district)
+        parts.append(state)
+        parts.append(pincode)
+        shipping_address = ', '.join(p for p in parts if p)
 
         if request.form.get('save_address') == 'on':
-            if not saved_addresses:  # first address automatically becomes default
-                db.session.add(Address(user_id=current_user.id, full_name=shipping_name, phone=shipping_phone, address_line=shipping_address, is_default=True))
-            else:
-                db.session.add(Address(user_id=current_user.id, full_name=shipping_name, phone=shipping_phone, address_line=shipping_address))
+            new_addr = Address(
+                user_id=current_user.id, full_name=shipping_name, phone=shipping_phone,
+                house_number=house_number, street=street, area=area, city=city,
+                district=district, state=state, pincode=pincode,
+                is_default=not saved_addresses
+            )
+            db.session.add(new_addr)
             db.session.commit()
     else:
         address = Address.query.get_or_404(address_id)
@@ -1413,7 +1457,7 @@ def checkout():
             flash("Invalid address selected.", "error")
             return redirect(url_for('checkout'))
         shipping_name = address.full_name
-        shipping_address = address.address_line
+        shipping_address = address.full_address
         shipping_phone = address.phone
 
     order = Order(
@@ -1436,7 +1480,7 @@ def checkout():
             order_id=order.id,
             product_id=item.product_id,
             product_name=item.product.name,
-            unit_price=item.product.price,
+            unit_price=item.product.discounted_price,
             quantity=item.quantity,
             size=item.size
         ))
@@ -1682,6 +1726,170 @@ def admin_delete_coupon(coupon_id):
     flash("Coupon deleted.", "info")
     return redirect(url_for('admin_coupons'))
 
+
+#===================================== Admin: Manage Users ====================================
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    search_q = request.args.get('q', '').strip()
+
+    query = User.query
+    if search_q:
+        query = query.filter(
+            or_(
+                User.name.ilike(f"%{search_q}%"),
+                User.email.ilike(f"%{search_q}%")
+            )
+        )
+
+    users = query.order_by(User.created_at.desc()).all()
+    return render_template('admin_users.html', users=users, search_q=search_q)
+
+
+@app.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
+@admin_required
+def admin_toggle_admin(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if user.id == current_user.id:
+        flash("You can't remove your own admin access.", "error")
+        return redirect(url_for('admin_users'))
+
+    user.is_admin = not user.is_admin
+    db.session.commit()
+    flash(f"{user.email} {'granted' if user.is_admin else 'removed from'} admin access.", "info")
+    return redirect(url_for('admin_users'))
+
+
+
+#===================================== Admin: Offers ====================================
+
+@app.route('/admin/offers')
+@admin_required
+def admin_offers():
+    offers = Offer.query.order_by(Offer.display_order.asc()).all()
+    return render_template('admin_offers.html', offers=offers)
+
+
+@app.route('/admin/offers/add', methods=['GET', 'POST'])
+@admin_required
+def admin_add_offer():
+    if request.method == 'GET':
+        return render_template('admin_offer_form.html', offer=None)
+
+    title = request.form.get('title')
+    subtitle = request.form.get('subtitle')
+    link_url = request.form.get('link_url')
+    display_order = int(request.form.get('display_order') or 0)
+
+    image = request.files.get('offer_image')
+    image_path = None
+    if image and image.filename:
+        if not allowed_file(image.filename):
+            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+            return render_template('admin_offer_form.html', offer=None)
+        image_path = save_product_image(image)
+
+    if not title or not image_path:
+        flash("Please provide a title and an image.", "error")
+        return render_template('admin_offer_form.html', offer=None)
+
+    db.session.add(Offer(title=title, subtitle=subtitle, image_url=image_path, link_url=link_url, display_order=display_order))
+    db.session.commit()
+    flash("Offer created.", "success")
+    return redirect(url_for('admin_offers'))
+
+
+@app.route('/admin/offers/<int:offer_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_offer(offer_id):
+    offer = Offer.query.get_or_404(offer_id)
+    if request.method == 'GET':
+        return render_template('admin_offer_form.html', offer=offer)
+
+    offer.title = request.form.get('title')
+    offer.subtitle = request.form.get('subtitle')
+    offer.link_url = request.form.get('link_url')
+    offer.display_order = int(request.form.get('display_order') or 0)
+
+    image = request.files.get('offer_image')
+    if image and image.filename:
+        if not allowed_file(image.filename):
+            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+            return render_template('admin_offer_form.html', offer=offer)
+        offer.image_url = save_product_image(image)
+
+    db.session.commit()
+    flash("Offer updated.", "success")
+    return redirect(url_for('admin_offers'))
+
+
+@app.route('/admin/offers/<int:offer_id>/toggle', methods=['POST'])
+@admin_required
+def admin_toggle_offer(offer_id):
+    offer = Offer.query.get_or_404(offer_id)
+    offer.is_active = not offer.is_active
+    db.session.commit()
+    flash(f"Offer {'activated' if offer.is_active else 'deactivated'}.", "info")
+    return redirect(url_for('admin_offers'))
+
+
+@app.route('/admin/offers/<int:offer_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_offer(offer_id):
+    offer = Offer.query.get_or_404(offer_id)
+    db.session.delete(offer)
+    db.session.commit()
+    flash("Offer deleted.", "info")
+    return redirect(url_for('admin_offers'))
+
+
+
+
+#===============================================Offer Landing Page===================================================================
+
+@app.route('/offers/<int:offer_id>')
+def offer_detail(offer_id):
+    offer = Offer.query.get_or_404(offer_id)
+
+    if not offer.is_active:
+        flash("This offer is no longer active.", "error")
+        return redirect(url_for('catalogue'))
+
+    products = Product.query.filter_by(offer_id=offer.id).order_by(Product.created_at.desc()).all()
+
+    wishlisted_ids = set()
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        wishlisted_ids = {w.product_id for w in Wishlist.query.filter_by(user_id=current_user.id).all()}
+
+    return render_template('offer_detail.html', offer=offer, products=products, wishlisted_ids=wishlisted_ids)
+
+#===================================== Admin: Product Discounts ====================================
+
+@app.route('/admin/products')
+@admin_required
+def admin_products():
+    search_q = request.args.get('q', '').strip()
+    query = Product.query
+    if search_q:
+        query = query.filter(Product.name.ilike(f"%{search_q}%"))
+    products = query.order_by(Product.created_at.desc()).all()
+    return render_template('admin_products.html', products=products, search_q=search_q)
+
+
+@app.route('/admin/products/<int:product_id>/discount', methods=['POST'])
+@admin_required
+def admin_update_discount(product_id):
+    product = Product.query.get_or_404(product_id)
+    discount = int(request.form.get('discount_percent') or 0)
+    discount = max(0, min(discount, 100))  # clamp — a bad value here shouldn't corrupt pricing
+    product.discount_percent = discount
+    db.session.commit()
+    flash(f"Discount for {product.name} set to {discount}%.", "success")
+    return redirect(url_for('admin_products'))
+
+
 #===============================================Search===================================================================
 
 
@@ -1697,6 +1905,10 @@ def search():
 
     if not query:
         return render_template('search_results.html', products=[], query='', pagination=None, active_sort=sort, wishlisted_ids=wishlisted_ids)
+
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        db.session.add(SearchHistory(user_id=current_user.id, query=query))
+        db.session.commit()
 
     like_pattern = f"%{query}%"
     products_query = Product.query.filter(
@@ -1718,6 +1930,72 @@ def search():
     products = pagination.items
 
     return render_template('search_results.html', products=products, query=query, pagination=pagination, active_sort=sort, wishlisted_ids=wishlisted_ids)
+
+
+#===============================================Search Autocomplete & History===================================================================
+
+@app.route('/search/suggest')
+def search_suggest():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return {"products": [], "categories": []}
+
+    like_pattern = f"%{q}%"
+
+    product_matches = (
+        Product.query
+        .filter(Product.name.ilike(like_pattern))
+        .order_by(Product.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    products = [{"id": p.id, "name": p.name, "image_url": product_image(p.image_url)} for p in product_matches]
+
+    category_matches = (
+        db.session.query(Product.category)
+        .filter(Product.category.ilike(like_pattern))
+        .distinct()
+        .limit(3)
+        .all()
+    )
+    categories = [c[0] for c in category_matches]
+
+    return {"products": products, "categories": categories}
+
+@app.route('/search/history')
+@login_required
+def search_history():
+    if getattr(current_user, 'is_vendor', False):
+        return {"history": []}
+
+    recent = (
+        SearchHistory.query
+        .filter_by(user_id=current_user.id)
+        .order_by(SearchHistory.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    # de-dupe by query text, preserving most-recent-first order, capped at 8
+    seen = set()
+    deduped = []
+    for h in recent:
+        key = h.query.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(h.query)
+        if len(deduped) >= 8:
+            break
+
+    return {"history": deduped}
+
+
+@app.route('/search/history/clear', methods=['POST'])
+@login_required
+def search_history_clear():
+    SearchHistory.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    return {"success": True}
 
 #===============================================Home===================================================================
 
@@ -1764,6 +2042,33 @@ def home():
     )
     
     
+    
+    import click
+
+#===============================================CLI: Create/Promote Admin===================================================================
+
+@app.cli.command('create-admin')
+@click.option('--email', prompt=True, help='Email address for the admin account.')
+@click.option('--name', prompt=True, default='Admin', help='Display name (only used if creating a new account).')
+@click.password_option(help='Password for the admin account.')
+def create_admin(email, name, password):
+    """Create a new admin user, or promote an existing account to admin."""
+    user = User.query.filter_by(email=email).first()
+
+    if user:
+        user.is_admin = True
+        user.is_verified = True
+        user.set_password(password)
+        db.session.commit()
+        click.echo(f"Existing account promoted to admin: {user.email}")
+    else:
+        user = User(name=name, email=email, is_admin=True, is_verified=True)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        click.echo(f"New admin account created: {user.email}")
+
+
   #===============================================MAIN===================================================================
    
 if __name__ == '__main__':

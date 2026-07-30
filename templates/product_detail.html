@@ -43,7 +43,21 @@
                 </a>
             {% endif %}
 
-            <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+            {% if product.has_discount %}
+                <p class="product-price">
+                    <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                    <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                    <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                </p>
+            {% else %}
+                <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
+            {% endif %}
+            {% if not product.requires_size %}
+                {% set urgency = product.urgency_label() %}
+                {% if urgency %}
+                    <span class="stock-badge {{ 'stock-badge-out' if urgency == 'Out of stock' else 'stock-badge-low' }}">{{ urgency }}</span>
+                {% endif %}
+            {% endif %}
 
             {% if product.description %}
                 <p class="onboarding-sub">{{ product.description }}</p>
@@ -65,12 +79,15 @@
                             {% for size in product.sizes|sort(attribute='size') %}
                                 <label class="pd-size-pill {{ 'out-of-stock' if size.stock_quantity <= 0 else '' }}">
                                     <input type="radio" name="size" value="{{ size.size }}"
+                                        data-stock="{{ size.stock_quantity }}"
                                         {{ 'disabled' if size.stock_quantity <= 0 else '' }}
-                                        {{ 'required' if product.requires_size else '' }}>
+                                        {{ 'required' if product.requires_size else '' }}
+                                        onclick="updateStockBadge(this)">
                                     {{ size.size }}
                                 </label>
                             {% endfor %}
                         </div>
+                        <span id="sizeStockBadge" class="stock-badge" style="display:none;"></span>
                         {% if not product.sizes %}
                             <p class="onboarding-sub">Currently out of stock in all sizes.</p>
                         {% endif %}
@@ -214,6 +231,20 @@ function stepQty(delta) {
     const input = document.getElementById('qtyInput');
     const newVal = Math.max(1, parseInt(input.value) + delta);
     input.value = newVal;
+}
+
+function updateStockBadge(input) {
+    const badge = document.getElementById('sizeStockBadge');
+    const stock = parseInt(input.dataset.stock);
+    const threshold = {{ product.LOW_STOCK_THRESHOLD }};
+
+    if (stock <= threshold) {
+        badge.textContent = stock <= 0 ? 'Out of stock' : `Only ${stock} left`;
+        badge.className = 'stock-badge ' + (stock <= 0 ? 'stock-badge-out' : 'stock-badge-low');
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
 }
 </script>
 <script>

@@ -8,7 +8,7 @@
 {% if offers %}
 <div class="offers-strip">
     {% for offer in offers %}
-        <a href="{{ offer.link_url or '#' }}" class="offer-card">
+        <a href="{{ url_for('offer_detail', offer_id=offer.id) }}" class="offer-card">
             <img src="{{ offer.image_url | product_image }}" alt="{{ offer.title }}">
             <div class="offer-overlay">
                 <h3>{{ offer.title }}</h3>
@@ -28,21 +28,33 @@
     <p class="onboarding-sub">Based on your style profile.</p>
     <div class="product-grid">
         {% for product, score, breakdown in ranked %}
-            <div class="product-card">
-                <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
-                    <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
-                        {{ heart_icon() }}
-                    </button>
-                </form>
-                <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                    <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
-                    <div class="product-card-body">
-                        <h4>{{ product.name }}</h4>
+        <div class="product-card">
+            {% if current_user.is_authenticated and not current_user.is_vendor %}
+            <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                    {{ heart_icon() }}
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                <div class="product-card-body">
+                    <h3>{{ product.name }}</h3>
+                    {% if product.offer and product.offer.is_active %}
+                        <a href="{{ url_for('offer_detail', offer_id=product.offer.id) }}" class="offer-badge" onclick="event.stopPropagation();">{{ product.offer.title }}</a>
+                    {% endif %}
+                    {% if product.has_discount %}
+                        <p class="product-price">
+                            <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                            <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                            <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                        </p>
+                    {% else %}
                         <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                        <p style="font-size:11px; color:var(--olive);">Match: {{ (score * 100)|round|int }}%</p>
-                    </div>
-                </a>
-            </div>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
         {% endfor %}
     </div>
 </div>
@@ -57,22 +69,33 @@
     {% if latest_products %}
         <div class="product-grid">
             {% for product in latest_products %}
-                <div class="product-card">
-                    {% if current_user.is_authenticated and not current_user.is_vendor %}
-                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
-                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
-                            {{ heart_icon() }}
-                        </button>
-                    </form>
-                    {% endif %}
-                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
-                        <div class="product-card-body">
-                            <h3>{{ product.name }}</h3>
+            <div class="product-card">
+                {% if current_user.is_authenticated and not current_user.is_vendor %}
+                <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                    <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                        {{ heart_icon() }}
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                    <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h3>{{ product.name }}</h3>
+                        {% if product.offer and product.offer.is_active %}
+                            <a href="{{ url_for('offer_detail', offer_id=product.offer.id) }}" class="offer-badge" onclick="event.stopPropagation();">{{ product.offer.title }}</a>
+                        {% endif %}
+                        {% if product.has_discount %}
+                            <p class="product-price">
+                                <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                                <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                                <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                            </p>
+                        {% else %}
                             <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                        </div>
-                    </a>
-                </div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
             {% endfor %}
         </div>
     {% else %}
@@ -89,21 +112,32 @@
         <div class="product-grid">
             {% for product in all_products %}
                 <div class="product-card">
-                    {% if current_user.is_authenticated and not current_user.is_vendor %}
-                    <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
-                        <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
-                            {{ heart_icon() }}
-                        </button>
-                    </form>
-                    {% endif %}
-                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                        <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
-                        <div class="product-card-body">
-                            <h3>{{ product.name }}</h3>
+                {% if current_user.is_authenticated and not current_user.is_vendor %}
+                <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                    <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
+                        {{ heart_icon() }}
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                    <img src="{{ product.image_url | product_image }}" alt="{{ product.name }}">
+                    <div class="product-card-body">
+                        <h3>{{ product.name }}</h3>
+                        {% if product.offer and product.offer.is_active %}
+                            <a href="{{ url_for('offer_detail', offer_id=product.offer.id) }}" class="offer-badge" onclick="event.stopPropagation();">{{ product.offer.title }}</a>
+                        {% endif %}
+                        {% if product.has_discount %}
+                            <p class="product-price">
+                                <span class="price-original">₹{{ "{:,}".format(product.price) }}</span>
+                                <span class="price-discounted">₹{{ "{:,}".format(product.discounted_price) }}</span>
+                                <span class="discount-badge">{{ product.discount_percent }}% OFF</span>
+                            </p>
+                        {% else %}
                             <p class="product-price">₹{{ "{:,}".format(product.price) }}</p>
-                        </div>
-                    </a>
-                </div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
             {% endfor %}
         </div>
     {% else %}

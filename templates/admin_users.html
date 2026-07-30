@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users · ORLE Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Users</h1>
+        <p>Grant or remove admin access for registered accounts.</p>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>All Users</h2>
+            <span class="text-link">{{ users|length }} total</span>
+        </div>
+
+        <form method="GET" action="{{ url_for('admin_users') }}" class="inline-sort-form" style="margin-bottom: 16px;">
+            <input type="text" name="q" placeholder="Search by name or email" value="{{ search_q }}">
+            <button type="submit" class="filter-apply-btn">Search</button>
+            {% if search_q %}
+                <a href="{{ url_for('admin_users') }}" class="text-link">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if users %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Joined</th>
+                        <th>Verified</th>
+                        <th>Admin</th>
+                        <th class="num"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.created_at.strftime('%d %b %Y') }}</td>
+                            <td>
+                                <span class="order-status {{ 'status-placed' if user.is_verified else 'status-pending_payment' }}">
+                                    {{ 'Verified' if user.is_verified else 'Unverified' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="order-status {{ 'status-placed' if user.is_admin else 'status-cancelled' }}">
+                                    {{ 'Admin' if user.is_admin else 'Customer' }}
+                                </span>
+                            </td>
+                            <td class="num">
+                                {% if user.id != current_user.id %}
+                                    <form action="{{ url_for('admin_toggle_admin', user_id=user.id) }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="text-link" style="border:none; background:none; cursor:pointer;">
+                                            {{ 'Remove Admin' if user.is_admin else 'Make Admin' }}
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="onboarding-sub">(you)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">No users found{{ ' for "' + search_q + '"' if search_q else '' }}.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -96,7 +96,6 @@
             {% endif %}
             {% else %}
                 <a href="{{ url_for('login') }}">Sign In</a>
-                <a href="{{ url_for('vendor_login') }}" class="vendor-link">Vendor Portal</a>
             {% endif %}
         </div>
     </div>
@@ -147,6 +146,131 @@
         <span>PRIVACY · TERMS</span>
     </div>
 </footer>
+
+
+<script>
+(function () {
+    const input = document.getElementById('searchInput');
+    const dropdown = document.getElementById('searchDropdown');
+    const wrap = document.getElementById('searchBarWrap');
+    let debounceTimer = null;
+
+    if (!input || !dropdown) return;
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function renderHistory(history) {
+        if (!history.length) {
+            dropdown.innerHTML = '<div class="search-dropdown-empty">No recent searches</div>';
+            return;
+        }
+        const items = history.map(q => `
+            <a href="/search?q=${encodeURIComponent(q)}" class="search-dropdown-item search-history-item">
+                <span class="search-dropdown-icon">↩</span> ${escapeHtml(q)}
+            </a>
+        `).join('');
+        dropdown.innerHTML = `
+            <div class="search-dropdown-header">
+                <span>Recent Searches</span>
+                <button type="button" id="clearHistoryBtn" class="search-clear-btn">Clear</button>
+            </div>
+            ${items}
+        `;
+        const clearBtn = document.getElementById('clearHistoryBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await fetch('/search/history/clear', { method: 'POST' });
+                dropdown.innerHTML = '<div class="search-dropdown-empty">No recent searches</div>';
+            });
+        }
+    }
+
+    function renderSuggestions(data) {
+        const { products, categories } = data;
+        if (!products.length && !categories.length) {
+            dropdown.innerHTML = '<div class="search-dropdown-empty">No matches found</div>';
+            return;
+        }
+
+        let html = '';
+
+        if (categories.length) {
+            html += '<div class="search-dropdown-header"><span>Categories</span></div>';
+            html += categories.map(c => `
+                <a href="/catalogue?category=${encodeURIComponent(c)}" class="search-dropdown-item search-category-item">
+                    <span class="search-dropdown-icon">▸</span> ${escapeHtml(c)}
+                </a>
+            `).join('');
+        }
+
+        if (products.length) {
+            html += '<div class="search-dropdown-header"><span>Products</span></div>';
+            html += products.map(p => `
+                <a href="/catalogue/${p.id}" class="search-dropdown-item search-product-item">
+                    <img src="${p.image_url}" alt="" class="search-dropdown-thumb">
+                    <span>${escapeHtml(p.name)}</span>
+                </a>
+            `).join('');
+        }
+
+        dropdown.innerHTML = html;
+    }
+
+    async function showHistory() {
+        try {
+            const res = await fetch('/search/history');
+            if (!res.ok) { dropdown.style.display = 'none'; return; }
+            const data = await res.json();
+            renderHistory(data.history || []);
+            dropdown.style.display = 'block';
+        } catch (err) {
+            dropdown.style.display = 'none';
+        }
+    }
+
+    async function showSuggestions(q) {
+        try {
+            const res = await fetch(`/search/suggest?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            renderSuggestions(data);
+            dropdown.style.display = 'block';
+        } catch (err) {
+            dropdown.style.display = 'none';
+        }
+    }
+
+    input.addEventListener('focus', () => {
+        if (input.value.trim().length < 2) {
+            showHistory();
+        } else {
+            showSuggestions(input.value.trim());
+        }
+    });
+
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const q = input.value.trim();
+
+        if (q.length < 2) {
+            showHistory();
+            return;
+        }
+
+        debounceTimer = setTimeout(() => showSuggestions(q), 250);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+})();
+</script>
 
 <script>
   document.querySelectorAll('.flash-message').forEach(function (el) {

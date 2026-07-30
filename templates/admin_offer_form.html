@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Offer' if offer else 'Add Offer' }} · ORLE Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>{{ 'Edit Offer' if offer else 'Add Offer' }}</h1>
+        <p>{{ 'Update this promotional banner.' if offer else 'Create a new promotional banner for the homepage and dashboard.' }}</p>
+    </div>
+
+    <div class="admin-section">
+        <form
+            action="{{ url_for('admin_edit_offer', offer_id=offer.id) if offer else url_for('admin_add_offer') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="admin-form"
+        >
+            <div class="field">
+                <label for="title">Title</label>
+                <input type="text" name="title" id="title" value="{{ offer.title if offer else '' }}" required>
+            </div>
+
+            <div class="field">
+                <label for="subtitle">Subtitle (optional)</label>
+                <input type="text" name="subtitle" id="subtitle" value="{{ offer.subtitle if offer else '' }}">
+            </div>
+
+            <div class="field">
+                <label for="link_url">Link URL (optional)</label>
+                <input type="text" name="link_url" id="link_url" placeholder="/catalogue?category=dresses" value="{{ offer.link_url if offer else '' }}">
+                <p class="onboarding-sub">Where clicking the banner should take customers. Leave blank if it shouldn't link anywhere.</p>
+            </div>
+
+            <div class="field">
+                <label for="display_order">Display Order</label>
+                <input type="number" name="display_order" id="display_order" value="{{ offer.display_order if offer else 0 }}" min="0">
+                <p class="onboarding-sub">Lower numbers show first.</p>
+            </div>
+
+            <div class="field">
+                <label for="offer_image">{{ 'Replace Image' if offer else 'Banner Image' }}</label>
+                <input type="file" name="offer_image" id="offer_image" accept=".jpg,.jpeg,.png,.webp" {{ 'required' if not offer else '' }}>
+                {% if offer and offer.image_url %}
+                    <div class="admin-offer-preview">
+                        <img src="{{ offer.image_url | product_image }}" alt="{{ offer.title }}">
+                        <span class="onboarding-sub">Current image — upload a new one to replace it.</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="detail-actions">
+                <button type="submit" class="btn-tan">{{ 'Save Changes' if offer else 'Create Offer' }}</button>
+                <a href="{{ url_for('admin_offers') }}" class="text-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

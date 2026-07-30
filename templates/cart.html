@@ -13,7 +13,14 @@
                 {% if item.size %}
                     <p class="cart-item-size">Size: {{ item.size }}</p>
                 {% endif %}
-                <p class="product-price">₹{{ "{:,}".format(item.product.price) }} each</p>
+                {% if item.product.has_discount %}
+                    <p class="product-price">
+                        <span class="price-original">₹{{ "{:,}".format(item.product.price) }}</span>
+                        <span class="price-discounted">₹{{ "{:,}".format(item.product.discounted_price) }} each</span>
+                    </p>
+                {% else %}
+                    <p class="product-price">₹{{ "{:,}".format(item.product.price) }} each</p>
+                {% endif %}
             </div>
             <form action="{{ url_for('cart_update', item_id=item.id) }}" method="POST" style="display:flex; gap:8px; align-items:center;">
                 <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px;">

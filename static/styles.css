@@ -2965,3 +2965,180 @@ footer {
     gap: 10px 16px;
     margin-top: 4px;
 }
+
+.search-bar-wrap {
+    position: relative;
+}
+.search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    margin-top: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+    z-index: 50;
+}
+.search-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+}
+.search-clear-btn {
+    background: none;
+    border: none;
+    font-size: 0.75rem;
+    color: #b45309;
+    cursor: pointer;
+}
+.search-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    text-decoration: none;
+    color: #111827;
+    font-size: 0.9rem;
+}
+.search-dropdown-item:hover {
+    background: #f9fafb;
+}
+.search-dropdown-icon {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+.search-dropdown-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+.search-dropdown-empty {
+    padding: 14px;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: center;
+}
+.admin-quick-links {
+    display: flex;
+    gap: 16px;
+    margin: 24px 0 32px;
+}
+
+.price-original {
+    text-decoration: line-through;
+    color: #9ca3af;
+    font-size: 0.85em;
+    margin-right: 8px;
+}
+.price-discounted {
+    color: #b45309;
+    font-weight: 700;
+}
+.discount-badge {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.offer-hero {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 32px;
+}
+.offer-hero-img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: cover;
+    display: block;
+}
+.offer-hero-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 24px;
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+    color: #fff;
+}
+.offer-hero-text h1 {
+    color: #fff;
+    margin: 0 0 6px;
+}
+.offer-hero-text .onboarding-sub {
+    color: rgba(255,255,255,0.85);
+}
+.admin-offer-thumb {
+    width: 60px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+.admin-row-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.address-box-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+.address-box {
+    display: block;
+    position: relative;
+    border: 1px solid var(--light-grey);
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.address-box:hover {
+    border-color: var(--olive);
+}
+.address-box-selected {
+    border-color: var(--olive);
+    background: rgba(92, 107, 74, 0.05);
+}
+.address-box input[type="radio"] {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: auto;
+}
+.address-box-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    padding-right: 24px;
+}
+.address-box-new {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 70px;
+    border-style: dashed;
+}
+.address-box-new .address-box-head {
+    margin-bottom: 0;
+    padding-right: 0;
+}

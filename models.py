@@ -5,6 +5,22 @@ from flask_login import UserMixin
 
 db = SQLAlchemy()
 
+#=======================Prevents the ALembic error for naming convention=====================
+from sqlalchemy import MetaData
+
+naming_convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+
+db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
+
+#============================================================================================
+
+
 class User(db.Model, UserMixin):
     __tablename__ = "users"
     
@@ -24,7 +40,7 @@ class User(db.Model, UserMixin):
     
     profile = db.relationship('UserProfile', backref='user', uselist=False, cascade='all, delete-orphan')
     
-    cart_items = db.relationship('CartItem', backref='user', lazy=True)
+    cart_items = db.relationship('CartItem', backref='user', lazy=True, cascade='all, delete-orphan')    
     
     is_vendor = False
     
@@ -110,6 +126,17 @@ class Product(db.Model):
             return self.stock_quantity
         match = next((s for s in self.sizes if s.size == size), None)
         return match.stock_quantity if match else 0
+    
+    LOW_STOCK_THRESHOLD = 5
+
+    def urgency_label(self, size=None):
+        """Returns 'Out of stock', 'Only N left', or None if stock is healthy."""
+        qty = self.stock_for_size(size) if (self.requires_size and size) else self.available_stock
+        if qty <= 0:
+            return "Out of stock"
+        if qty <= self.LOW_STOCK_THRESHOLD:
+            return f"Only {qty} left"
+        return None
 
     @property
     def average_rating(self):
@@ -131,6 +158,21 @@ class Product(db.Model):
             'image_url': self.image_url,
             'fit_note': self.fit_note
         }
+        
+    discount_percent = db.Column(db.Integer, nullable=False, default=0)  # NEW — 0-100, set by vendor, overridable by admin
+    offer_id = db.Column(db.Integer, db.ForeignKey('offers.id'), nullable=True)  # NEW — optional tag to a promo banner
+
+    offer = db.relationship('Offer', backref='tagged_products')
+
+    @property
+    def has_discount(self):
+        return self.discount_percent and self.discount_percent > 0
+
+    @property
+    def discounted_price(self):
+        if self.has_discount:
+            return round(self.price * (100 - self.discount_percent) / 100)
+        return self.price
 
 
 class Offer(db.Model):
@@ -274,11 +316,32 @@ class Address(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     full_name = db.Column(db.String(200), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    address_line = db.Column(db.Text, nullable=False)
+
+    house_number = db.Column(db.String(50), nullable=False)   # NEW
+    street = db.Column(db.String(150), nullable=False)         # NEW
+    area = db.Column(db.String(100), nullable=True)            # NEW — locality/landmark, optional
+    city = db.Column(db.String(100), nullable=False)           # NEW
+    district = db.Column(db.String(100), nullable=True)        # NEW — optional, some cities don't distinguish
+    state = db.Column(db.String(100), nullable=False)          # NEW
+    pincode = db.Column(db.String(10), nullable=False)         # NEW
+
     is_default = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship('User', backref='addresses')
+    user = db.relationship('User', backref=db.backref('addresses', cascade='all, delete-orphan'))
+    
+    @property
+    def full_address(self):
+        """Single-line formatted address — used for display and as the Order snapshot."""
+        parts = [self.house_number, self.street]
+        if self.area:
+            parts.append(self.area)
+        parts.append(self.city)
+        if self.district and self.district.lower() != self.city.lower():
+            parts.append(self.district)
+        parts.append(self.state)
+        parts.append(self.pincode)
+        return ', '.join(p for p in parts if p)
     
 # ── Reviews ──────────────────────────────────────────────
 class Review(db.Model):
@@ -362,3 +425,13 @@ class Coupon(db.Model):
         if self.discount_type == 'percent':
             return min(order_total * self.discount_value // 100, order_total)
         return min(self.discount_value, order_total)
+    
+class SearchHistory(db.Model):
+    __tablename__ = 'search_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    query = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User')
