@@ -30,6 +30,7 @@ class Config:
     RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
     RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
+    REDIS_URL = os.environ.get('REDIS_URL')  # NEW
 
     # Cookie / session hardening
     SESSION_COOKIE_HTTPONLY = True
@@ -50,6 +51,8 @@ class Config:
             'RAZORPAY_KEY_SECRET': Config.RAZORPAY_KEY_SECRET,
             'RAZORPAY_WEBHOOK_SECRET': Config.RAZORPAY_WEBHOOK_SECRET,
             'SENTRY_DSN': Config.SENTRY_DSN,
+            'REDIS_URL': Config.REDIS_URL,
+
         }
 
         if Config.IS_PRODUCTION:

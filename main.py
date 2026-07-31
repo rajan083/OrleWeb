@@ -28,10 +28,6 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 
-
-
-
-
 app = Flask(__name__)
 Config.validate()
 app.config.from_object(Config)
@@ -41,8 +37,8 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=[],  # no global limit — we apply limits per-route below, only where it matters
-    storage_uri="memory://",  # fine for a single-process dev/small deployment; see note below
+    default_limits=[],
+    storage_uri=app.config.get('REDIS_URL') or "memory://",  # CHANGED — falls back to memory:// if REDIS_URL isn't set
 )
 
 
@@ -1341,7 +1337,7 @@ def vendor_login():
 @vendor_required
 def vendor_dashboard():
     page = request.args.get('page', 1, type=int)  # NEW
-    pagination = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    pagination = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
     return render_template('vendor_dashboard.html', products=pagination.items, pagination=pagination)  # CHANGED
 
 
@@ -2203,7 +2199,7 @@ def admin_users():
             )
         )
 
-    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=10, error_out=False) 
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=12, error_out=False) 
     return render_template('admin_users.html', users=pagination.items, pagination=pagination, search_q=search_q)  
 
 
@@ -2239,7 +2235,7 @@ def admin_vendors():
             )
         )
 
-    pagination = query.order_by(Vendor.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    pagination = query.order_by(Vendor.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
 
     product_counts = dict(
         db.session.query(Product.vendor_id, db.func.count(Product.id))
@@ -2356,7 +2352,7 @@ def admin_delete_offer(offer_id):
 @admin_required
 def admin_reviews():
     page = request.args.get('page', 1, type=int)  # NEW
-    pagination = Review.query.order_by(Review.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    pagination = Review.query.order_by(Review.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
     return render_template('admin_reviews.html', reviews=pagination.items, pagination=pagination)  # CHANGED
 
 
@@ -2447,7 +2443,7 @@ def admin_products():
     if search_q:
         query = query.filter(Product.name.ilike(f"%{search_q}%"))
 
-    pagination = query.order_by(Product.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    pagination = query.order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
     return render_template('admin_products.html', products=pagination.items, pagination=pagination, search_q=search_q)  # CHANGED
 
 
