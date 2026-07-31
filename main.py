@@ -933,7 +933,7 @@ def cancel_order_with_refund(order, reason='Order cancellation'):
                 'amount': order.total_amount * 100,
                 'speed': 'optimum',
                 'notes': {'reason': reason, 'order_id': str(order.id)}
-            })
+            }, idempotency_key=f"order-cancel-{order.id}")  # NEW
         except razorpay.errors.BadRequestError as e:
             return False, f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this cancellation."
         except Exception:
@@ -979,7 +979,7 @@ def process_return_refund(ret):
                 'amount': refund_amount * 100,
                 'speed': 'optimum',
                 'notes': {'reason': 'Return approved', 'order_id': str(order.id), 'return_id': str(ret.id)}
-            })
+            }, idempotency_key=f"return-refund-{ret.id}")  # NEW
         except razorpay.errors.BadRequestError as e:
             return False, f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this return."
         except Exception:
@@ -1006,7 +1006,7 @@ def process_return_refund(ret):
 @app.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def order_cancel(order_id):
-    order = Order.query.get_or_404(order_id)
+    order = Order.query.with_for_update().get_or_404(order_id)  # CHANGED
 
     if order.user_id != current_user.id:
         flash("You don't have permission to cancel this order.", "error")
@@ -1017,7 +1017,7 @@ def order_cancel(order_id):
         return redirect(url_for('order_detail', order_id=order.id))
 
     success, message = cancel_order_with_refund(order, reason='Customer-initiated cancellation')
-    db.session.commit()
+    db.session.commit()  # releases the row lock
 
     if success:
         send_order_email(order, 'cancelled')
@@ -1700,10 +1700,8 @@ def vendor_order_detail(order_id):
 def vendor_update_order_status(order_id):
     order = Order.query.get_or_404(order_id)
 
-    owns_item = db.session.query(OrderItem).join(Product).filter(
-        OrderItem.order_id == order.id,
-        Product.vendor_id == current_user.id
-    ).first()
+    owns_item = db.session.query(OrderItem).join(Product).filter(OrderItem.order_id == order.id,Product.vendor_id == current_user.id).first()
+    
     if not owns_item:
         flash("You don't have permission to update this order.", "error")
         return redirect(url_for('vendor_orders'))
@@ -1714,6 +1712,7 @@ def vendor_update_order_status(order_id):
         return redirect(url_for('vendor_orders'))
 
     if new_status == 'cancelled':
+        order = Order.query.with_for_update().get(order.id)  
         if order.status not in CANCELLABLE_STATUSES:
             flash(f"This order can no longer be cancelled — it's already {order.status}.", "error")
             return redirect(url_for('vendor_orders'))
@@ -2384,7 +2383,7 @@ def admin_returns():
 @app.route('/admin/returns/<int:return_id>/approve', methods=['POST'])
 @admin_required
 def admin_approve_return(return_id):
-    ret = Return.query.get_or_404(return_id)
+    ret = Return.query.with_for_update().get_or_404(return_id)
     if ret.status != 'requested':
         flash("This return has already been resolved.", "error")
         return redirect(url_for('admin_returns'))
