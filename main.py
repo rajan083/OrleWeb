@@ -2662,8 +2662,7 @@ def create_admin(email, name, password):
         db.session.add(user)
         db.session.commit()
         click.echo(f"New admin account created: {user.email}")
-
-    
+        
     
   #===============================================MAIN===================================================================
    
