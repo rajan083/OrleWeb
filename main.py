@@ -8,7 +8,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import JWTManager
 from config import Config
 from functools import wraps
-from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon, SearchHistory,CATEGORY_CHOICES
+from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist, CartItem, Order, OrderItem, Address, Review, ProductImage, ProductSize, SIZE_CHOICES, Coupon, SearchHistory,CATEGORY_CHOICES, Return
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
@@ -21,22 +21,51 @@ import hmac
 import hashlib
 import json
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from PIL import Image, UnidentifiedImageError
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+
 
 
 
 
 
 app = Flask(__name__)
+Config.validate()
 app.config.from_object(Config)
 
 csrf = CSRFProtect(app)
 
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],  # no global limit — we apply limits per-route below, only where it matters
+    storage_uri="memory://",  # fine for a single-process dev/small deployment; see note below
+)
+
+
+if app.config.get('SENTRY_DSN'):
+    sentry_sdk.init(
+        dsn=app.config['SENTRY_DSN'],
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.1,
+        environment='production' if Config.IS_PRODUCTION else 'development',
+        send_default_pii=False,  # or True, your call — see note above
+    )
+    
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads", "products")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # NEW — 5MB per file
+ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}  # NEW — Pillow's format names, not extensions
+
+app.config["MAX_CONTENT_LENGTH"] = MAX_IMAGE_SIZE_BYTES  
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -48,6 +77,12 @@ serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
 
 
+@app.errorhandler(413)
+def file_too_large(e):
+    flash(f"File is too large — please keep uploads under {MAX_IMAGE_SIZE_BYTES // (1024*1024)}MB.", "error")
+    return redirect(request.referrer or url_for('home')), 413
+
+
 def send_verification_email(user, next_page=None):
     token = serializer.dumps(user.email, salt='email-verify')
     link = url_for('verify_email', token=token, next=next_page, _external=True)
@@ -57,6 +92,18 @@ def send_verification_email(user, next_page=None):
         sender=app.config['MAIL_USERNAME']
     )
     msg.body = f'Welcome to ORLE. Click the link below to verify your email:\n\n{link}\n\nThis link expires in 1 hour.'
+    mail.send(msg)
+
+
+def send_vendor_verification_email(vendor):
+    token = serializer.dumps(vendor.email, salt='vendor-email-verify')
+    link = url_for('verify_vendor_email', token=token, _external=True)
+    msg = Message(
+        'Verify your ORLE vendor account',
+        recipients=[vendor.email],
+        sender=app.config['MAIL_USERNAME']
+    )
+    msg.body = f'Welcome to ORLE. Click the link below to verify your vendor account:\n\n{link}\n\nThis link expires in 1 hour.'
     mail.send(msg)
 
 
@@ -118,6 +165,32 @@ def allowed_file(filename):
         filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
+
+def safe_int(value, default=None, min_value=None, max_value=None):
+    """Parses a form value as int, returning `default` (not raising) on bad input."""
+    if value is None or value == '':
+        return default
+    try:
+        result = int(value)
+    except (ValueError, TypeError):
+        return default
+    if min_value is not None:
+        result = max(result, min_value)
+    if max_value is not None:
+        result = min(result, max_value)
+    return result
+
+
+def safe_date(value, fmt='%Y-%m-%d'):
+    """Parses a form/query date string, returning None (not raising) on bad input."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, fmt)
+    except (ValueError, TypeError):
+        return None
+
+
 def vendor_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -127,9 +200,17 @@ def vendor_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    flash("Too many attempts. Please wait a moment and try again.", "error")
+    return redirect(request.referrer or url_for('home')), 429
+
+
  #===============================================Register===================================================================
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", methods=["POST"])
 def register():
     if request.method == 'GET':
         return render_template('register.html')
@@ -189,9 +270,32 @@ def verify_email(token):
     return render_template('verify_result.html', success=True, message="Your email has been verified. You can now log in.", next=next_page)
 
 
+@app.route('/vendor/verify/<token>')
+def verify_vendor_email(token):
+    try:
+        email = serializer.loads(token, salt='vendor-email-verify', max_age=3600)
+    except SignatureExpired:
+        return render_template('verify_result.html', success=False, message="This verification link has expired. Please register again or request a new link.")
+    except BadSignature:
+        return render_template('verify_result.html', success=False, message="This verification link is invalid.")
+
+    vendor = Vendor.query.filter_by(email=email).first()
+    if not vendor:
+        return render_template('verify_result.html', success=False, message="No vendor account found for this link.")
+
+    if vendor.is_verified:
+        return render_template('verify_result.html', success=True, message="Your vendor account is already verified — you can log in.", next=url_for('vendor_login'))
+
+    vendor.is_verified = True
+    db.session.commit()
+
+    return render_template('verify_result.html', success=True, message="Your vendor account has been verified. You can now log in.", next=url_for('vendor_login'))
+
+
  #===============================================Login================================================================
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     if request.method == 'GET':
         return render_template('login.html')
@@ -456,8 +560,8 @@ def address_delete(address_id):
 @app.route('/dashboard')
 def dashboard():
     offers = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).all()
-    latest_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
-    all_products = Product.query.order_by(Product.created_at.desc()).all()
+    latest_products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(8).all()
+    all_products = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).all()
 
     ranked = []
     wishlisted_ids = set()
@@ -487,7 +591,7 @@ def catalogue():
     sort = request.args.get('sort', 'newest')
     page = request.args.get('page', 1, type=int)
 
-    query = Product.query
+    query = Product.query.filter_by(is_active = True)
     if category:
         query = query.filter_by(category=category)
     if min_price is not None:
@@ -541,6 +645,16 @@ def catalogue():
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
 
+    is_admin_or_owner = (
+        current_user.is_authenticated and
+        (getattr(current_user, 'is_admin', False) or
+         (getattr(current_user, 'is_vendor', False) and product.vendor_id == current_user.id))
+    )
+
+    if not product.is_active and not is_admin_or_owner:
+        flash("This product is no longer available.", "error")
+        return redirect(url_for('catalogue'))
+                        
     is_wishlisted = False
     reviewable_order_items = []
     if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
@@ -601,7 +715,7 @@ def add_review(product_id):
         flash("You've already reviewed this purchase.", "info")
         return redirect(url_for('product_detail', product_id=product_id))
 
-    rating = int(request.form.get('rating') or 0)
+    rating = safe_int(request.form.get('rating'), default=0)
     if rating < 1 or rating > 5:
         flash("Please select a rating between 1 and 5.", "error")
         return redirect(url_for('product_detail', product_id=product_id))
@@ -641,6 +755,14 @@ def wishlist_toggle(product_id):
         flash("Added to wishlist.", "success")
 
     return redirect(request.referrer or url_for('catalogue'))
+
+
+@app.context_processor
+def inject_wishlist_count():
+    if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
+        count = Wishlist.query.filter_by(user_id=current_user.id).count()
+        return {'wishlist_count': count}
+    return {'wishlist_count': 0}
 
 
 #===============================================Cart===================================================================
@@ -703,7 +825,7 @@ def remove_coupon():
 @login_required
 def cart_add(product_id):
     product = Product.query.get_or_404(product_id)
-    quantity = int(request.form.get('quantity') or 1)
+    quantity = safe_int(request.form.get('quantity'), default=1, min_value=1)
     size = request.form.get('size')
 
     if product.requires_size and not size:
@@ -742,7 +864,7 @@ def cart_update(item_id):
         flash("You don't have permission to modify this item.", "error")
         return redirect(url_for('cart'))
 
-    quantity = int(request.form.get('quantity') or 1)
+    quantity = safe_int(request.form.get('quantity'), default=1, min_value=1)
 
     if quantity < 1:
         db.session.delete(item)
@@ -789,7 +911,10 @@ def order_detail(order_id):
     if order.user_id != current_user.id:
         flash("You don't have permission to view this order.", "error")
         return redirect(url_for('orders'))
-    return render_template('order_detail.html', order=order)
+
+    pending_return = Return.query.filter_by(order_id=order.id, status='requested').first() is not None  
+
+    return render_template('order_detail.html', order=order, pending_return=pending_return)  
 
 
 #===============================================Order Cancellation (Customer)===================================================================
@@ -833,6 +958,51 @@ def cancel_order_with_refund(order, reason='Order cancellation'):
     return True, "Order cancelled." + (" A refund has been initiated and will reflect in 5-7 business days." if order.payment_status == 'refunded' else "")
 
 
+def process_return_refund(ret):
+    """
+    Restocks the returned item(s) and issues a Razorpay refund for just that portion.
+    Returns (success: bool, message: str). Does NOT commit — caller commits.
+    Mutates ret.status to 'refunded' only on success.
+    """
+    order = ret.order
+
+    if ret.order_item_id:
+        items_to_restock = [ret.order_item]
+        refund_amount = ret.order_item.unit_price * ret.order_item.quantity
+    else:
+        items_to_restock = order.items
+        refund_amount = order.total_amount
+
+    if order.payment_status == 'paid' and order.razorpay_payment_id:
+        try:
+            razorpay_client.payment.refund(order.razorpay_payment_id, {
+                'amount': refund_amount * 100,
+                'speed': 'optimum',
+                'notes': {'reason': 'Return approved', 'order_id': str(order.id), 'return_id': str(ret.id)}
+            })
+        except razorpay.errors.BadRequestError as e:
+            return False, f"We couldn't process the refund automatically ({str(e)}). Please contact support to complete this return."
+        except Exception:
+            return False, "Something went wrong initiating the refund. Please contact support — this return has not been processed."
+
+    for oi in items_to_restock:
+        product = oi.product
+        if not product:
+            continue
+        if product.requires_size and oi.size:
+            size_row = ProductSize.query.filter_by(product_id=product.id, size=oi.size).first()
+            if size_row:
+                size_row.stock_quantity += oi.quantity
+            else:
+                db.session.add(ProductSize(product_id=product.id, size=oi.size, stock_quantity=oi.quantity))
+        elif not product.requires_size:
+            product.stock_quantity += oi.quantity
+
+    ret.status = 'refunded'
+    ret.resolved_at = datetime.utcnow()
+    return True, f"Return refunded (₹{refund_amount})."
+
+
 @app.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def order_cancel(order_id):
@@ -856,6 +1026,43 @@ def order_cancel(order_id):
         flash(message, "error")
 
     return redirect(url_for('order_detail', order_id=order.id))
+
+
+@app.route('/orders/<int:order_id>/return', methods=['POST'])
+@login_required
+def order_return_request(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    if order.user_id != current_user.id:
+        flash("You don't have permission to do that.", "error")
+        return redirect(url_for('order_detail', order_id=order.id))
+
+    if order.status != 'delivered':
+        flash("Returns can only be requested for delivered orders.", "error")
+        return redirect(url_for('order_detail', order_id=order.id))
+
+    existing = Return.query.filter_by(order_id=order.id, status='requested').first()
+    if existing:
+        flash("A return request is already pending for this order.", "error")
+        return redirect(url_for('order_detail', order_id=order.id))
+
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash("Please provide a reason for the return.", "error")
+        return redirect(url_for('order_detail', order_id=order.id))
+
+    order_item_id = request.form.get('order_item_id')  # optional — None means whole order
+    return_req = Return(
+        order_id=order.id,
+        order_item_id=order_item_id if order_item_id else None,
+        customer_id=current_user.id,
+        reason=reason
+    )
+    db.session.add(return_req)
+    db.session.commit()
+    flash("Return request submitted. You'll be notified once it's reviewed.", "success")
+    return redirect(url_for('order_detail', order_id=order.id))
+
 
  #===============================================Recommendations===================================================================
 
@@ -908,6 +1115,7 @@ def logout():
  #===============================================Forgot Password===================================================================
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", methods=["POST"])
 def forgot_password():
     if request.method == 'GET':
         return render_template('forgot_password.html')
@@ -972,6 +1180,72 @@ def reset_password(token):
     return redirect(url_for('login'))
 
 
+
+@app.route('/vendor/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", methods=["POST"])
+def vendor_forgot_password():
+    if request.method == 'GET':
+        return render_template('vendor_forgot_password.html')
+
+    email = request.form.get('email')
+
+    if not email:
+        flash("Please enter your email.", "error")
+        return render_template('vendor_forgot_password.html')
+
+    vendor = Vendor.query.filter_by(email=email).first()
+
+    if vendor:
+        token = serializer.dumps(vendor.email, salt='vendor-password-reset')
+        link = url_for('vendor_reset_password', token=token, _external=True)
+        msg = Message(
+            'Reset your ORLE vendor password',
+            recipients=[vendor.email],
+            sender=app.config['MAIL_USERNAME']
+        )
+        msg.body = f'Click the link below to reset your vendor password:\n\n{link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.'
+        mail.send(msg)
+
+    flash("If a vendor account exists with that email, a reset link has been sent.", "info")
+    return redirect(url_for('vendor_login'))
+
+
+@app.route('/vendor/reset-password/<token>', methods=['GET', 'POST'])
+def vendor_reset_password(token):
+    try:
+        email = serializer.loads(token, salt='vendor-password-reset', max_age=3600)
+    except SignatureExpired:
+        flash("This reset link has expired. Please request a new one.", "error")
+        return redirect(url_for('vendor_forgot_password'))
+    except BadSignature:
+        flash("This reset link is invalid.", "error")
+        return redirect(url_for('vendor_forgot_password'))
+
+    vendor = Vendor.query.filter_by(email=email).first()
+    if not vendor:
+        flash("No vendor account found for this link.", "error")
+        return redirect(url_for('vendor_forgot_password'))
+
+    if request.method == 'GET':
+        return render_template('vendor_reset_password.html', token=token)
+
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirm_password')
+
+    if not password or not confirm_password:
+        flash("Please fill in both password fields.", "error")
+        return render_template('vendor_reset_password.html', token=token)
+
+    if password != confirm_password:
+        flash("Passwords don't match.", "error")
+        return render_template('vendor_reset_password.html', token=token)
+
+    vendor.set_password(password)
+    db.session.commit()
+
+    flash("Your vendor password has been reset. You can now log in.", "success")
+    return redirect(url_for('vendor_login'))
+
  #===============================================Delete Account===================================================================
 
 @app.route('/profile/delete', methods=['GET', 'POST'])
@@ -1000,6 +1274,7 @@ def delete_account():
 #===============================================Vendor Auth===================================================================
 
 @app.route('/vendor/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", methods=["POST"])
 def vendor_register():
     if request.method == 'GET':
         return render_template('vendor_register.html')
@@ -1027,11 +1302,13 @@ def vendor_register():
     db.session.add(vendor)
     db.session.commit()
 
-    flash("Vendor account created. You can log in now.", "success")
-    return redirect(url_for('vendor_login'))
+    send_vendor_verification_email(vendor)
+    flash("Vendor account created! Check your email to verify before logging in.", "success")
+    return render_template('check_email.html', email=email)
 
 
 @app.route('/vendor/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def vendor_login():
     if request.method == 'GET':
         return render_template('vendor_login.html')
@@ -1045,6 +1322,14 @@ def vendor_login():
         flash("Invalid vendor credentials.", "error")
         return render_template('vendor_login.html')
 
+    if not vendor.is_verified:
+        flash("Please verify your email before logging in. Check your inbox.", "error")
+        return render_template('vendor_login.html')
+
+    if vendor.is_suspended:
+        flash("This vendor account has been suspended. Contact support for details.", "error")
+        return render_template('vendor_login.html')
+
     login_user(vendor)
     flash(f"Welcome back, {vendor.business_name}.", "success")
     return redirect(url_for('vendor_dashboard'))
@@ -1055,8 +1340,9 @@ def vendor_login():
 @app.route('/vendor/dashboard')
 @vendor_required
 def vendor_dashboard():
-    products = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).all()
-    return render_template('vendor_dashboard.html', products=products)
+    page = request.args.get('page', 1, type=int)  # NEW
+    pagination = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    return render_template('vendor_dashboard.html', products=pagination.items, pagination=pagination)  # CHANGED
 
 
 @app.route('/vendor/products/add', methods=['GET', 'POST'])
@@ -1069,10 +1355,10 @@ def vendor_add_product():
     image_path = None
 
     if image and image.filename:
-        if not allowed_file(image.filename):
-            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+        image_path, error = validate_and_save_image(image)
+        if error:
+            flash(error, "error")
             return redirect(request.url)
-        image_path = save_product_image(image)
 
     requires_size = request.form.get('requires_size') == 'on'
 
@@ -1082,7 +1368,7 @@ def vendor_add_product():
     product = Product(
         name=request.form.get('name'),
         description=request.form.get('description'),
-        price=int(request.form.get('price') or 0),
+        price=safe_int(request.form.get('price'), default=0, min_value=0),
         category=request.form.get('category'),
         image_url=image_path,
         best_for_body_types=','.join(body_types) if body_types else None,
@@ -1092,38 +1378,71 @@ def vendor_add_product():
         fit_note=request.form.get('fit_note'),
         vendor_id=current_user.id,
         requires_size=requires_size,
-        stock_quantity=0 if requires_size else int(request.form.get('stock_quantity') or 0),
-        discount_percent=int(request.form.get('discount_percent') or 0),
-        offer_id=int(request.form.get('offer_id')) if request.form.get('offer_id') else None,
+        stock_quantity=0 if requires_size else safe_int(request.form.get('stock_quantity'), default=0, min_value=0),
+        discount_percent=safe_int(request.form.get('discount_percent'), default=0, min_value=0, max_value=100),
+        offer_id=safe_int(request.form.get('offer_id'), default=None),
     )
     db.session.add(product)
     db.session.flush()
 
     gallery_files = request.files.getlist("gallery_images")
     for order, gfile in enumerate(gallery_files):
-        path = save_product_image(gfile)
+        path, error = validate_and_save_image(gfile)  # CHANGED
         if path:
             db.session.add(ProductImage(product_id=product.id, image_url=path, display_order=order))
+    # silently skips invalid gallery files rather than failing the whole submit — a bad gallery image
+    # shouldn't block the primary listing from being savedr))
 
     if product.requires_size:
         for size in SIZE_CHOICES:
-            qty = request.form.get(f'stock_{size}')
-            if qty and int(qty) > 0:
-                db.session.add(ProductSize(product_id=product.id, size=size, stock_quantity=int(qty)))
+            qty = safe_int(request.form.get(f'stock_{size}'), default=0, min_value=0)
+            if qty > 0:
+                db.session.add(ProductSize(product_id=product.id, size=size, stock_quantity=qty))
 
     db.session.commit()
     flash("Product listed successfully.", "success")
     return redirect(url_for('vendor_dashboard'))
 
 
-def save_product_image(image):
-    """Returns relative path or None. Reuses your existing UPLOAD_FOLDER/allowed_file setup."""
-    if not image or not image.filename or not allowed_file(image.filename):
-        return None
-    extension = image.filename.rsplit(".", 1)[1].lower()
-    filename = f"{uuid.uuid4().hex}.{extension}"
-    image.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-    return f"uploads/products/{filename}"
+def validate_and_save_image(file_storage):
+    """
+    Validates that file_storage is a genuine image — checked via Pillow's actual
+    decode, not just the extension or browser-supplied Content-Type (both spoofable) —
+    then re-encodes it fresh and saves under a new UUID filename. Re-encoding also
+    strips any non-image payload that might be hiding inside an otherwise-valid file.
+    Returns (relative_path, error_message) — exactly one of the two will be set.
+    """
+    if not file_storage or not file_storage.filename:
+        return None, None  # nothing submitted — not an error
+
+    if not allowed_file(file_storage.filename):
+        return None, "Please upload a JPG, JPEG, PNG or WEBP image."
+
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    if size > MAX_IMAGE_SIZE_BYTES:
+        return None, f"Image is too large — please keep uploads under {MAX_IMAGE_SIZE_BYTES // (1024*1024)}MB."
+
+    try:
+        img = Image.open(file_storage.stream)
+        img.verify()  # checks the file is a structurally valid image
+        file_storage.stream.seek(0)
+        img = Image.open(file_storage.stream)  # re-open — verify() leaves the handle unusable for further ops
+        if img.format not in ALLOWED_IMAGE_FORMATS:
+            return None, "Unsupported image format."
+        img.load()  # forces full decode now, catching truncated/corrupt files early
+    except (UnidentifiedImageError, OSError, ValueError):
+        return None, "This file isn't a valid image."
+
+    if img.format == "JPEG" and img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")  # JPEG can't encode alpha/palette data — convert first or save() will error
+
+    ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[img.format]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    img.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    return f"uploads/products/{filename}", None
 
 @app.template_filter('product_image')
 def product_image(image_url):
@@ -1152,23 +1471,23 @@ def vendor_edit_product(product_id):
 
     product.name = request.form.get('name')
     product.description = request.form.get('description')
-    product.price = int(request.form.get('price') or 0)
+    product.price = safe_int(request.form.get('price'), default=product.price, min_value=0)
     product.category = request.form.get('category')
     product.best_for_body_types = ','.join(body_types) if body_types else None
     product.best_for_occasions = ','.join(occasions) if occasions else None
     product.color = request.form.get('color') or None
     product.color_undertone = request.form.get('color_undertone') or None
-    product.discount_percent = max(0, min(int(request.form.get('discount_percent') or 0), 100))
-    product.offer_id = int(request.form.get('offer_id')) if request.form.get('offer_id') else None
+    product.discount_percent = safe_int(request.form.get('discount_percent'), default=0, min_value=0, max_value=100)
+    product.offer_id = safe_int(request.form.get('offer_id'), default=None)
     product.fit_note = request.form.get('fit_note')
 
     # cover image — unchanged behavior, replaces image_url if a new file is uploaded
     image = request.files.get("product_image")
     if image and image.filename:
-        if not allowed_file(image.filename):
-            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
+        image_path, error = validate_and_save_image(image)
+        if error:
+            flash(error, "error")
             return redirect(request.url)
-        product.image_url = save_product_image(image)
 
     # ── Gallery: delete selected existing images ──────────────
     delete_ids = request.form.getlist('delete_gallery_image')  # checkboxes named delete_gallery_image, value=image.id
@@ -1181,22 +1500,19 @@ def vendor_edit_product(product_id):
     # ── Gallery: add new images ────────────────────────────────
     existing_count = ProductImage.query.filter_by(product_id=product.id).count()
     gallery_files = request.files.getlist("gallery_images")
-    for offset, gfile in enumerate(gallery_files):
-        path = save_product_image(gfile)
+    for order, gfile in enumerate(gallery_files):
+        path, error = validate_and_save_image(gfile)  # CHANGED
         if path:
-            db.session.add(ProductImage(
-                product_id=product.id,
-                image_url=path,
-                display_order=existing_count + offset
-            ))
+            db.session.add(ProductImage(product_id=product.id, image_url=path, display_order=order))
+        # silently skips invalid gallery files rather than failing the whole submit — a bad gallery image
+        # shouldn't block the primary listing from being saved
 
     # ── Sizes: toggle requires_size, then add/update/remove per size ──
     product.requires_size = request.form.get('requires_size') == 'on'
 
     if product.requires_size:
         for size in SIZE_CHOICES:
-            qty_raw = request.form.get(f'stock_{size}')
-            qty = int(qty_raw) if qty_raw and qty_raw.isdigit() else 0
+            qty = safe_int(request.form.get(f'stock_{size}'), default=0, min_value=0)
 
             existing_size = ProductSize.query.filter_by(product_id=product.id, size=size).first()
 
@@ -1211,8 +1527,7 @@ def vendor_edit_product(product_id):
     else:
         # sizing turned off — clear any leftover per-size stock rows
         ProductSize.query.filter_by(product_id=product.id).delete()
-        if not product.requires_size:
-            product.stock_quantity = int(request.form.get('stock_quantity') or 0)
+        product.stock_quantity = safe_int(request.form.get('stock_quantity'), default=product.stock_quantity, min_value=0)
 
     db.session.commit()
     flash("Product updated.", "success")
@@ -1241,15 +1556,8 @@ def vendor_profile():
     start = request.args.get('start')
     end = request.args.get('end')
 
-    if start:
-        start_date = datetime.strptime(start, '%Y-%m-%d').date()
-    else:
-        start_date = (datetime.utcnow() - timedelta(days=30)).date()
-
-    if end:
-        end_date = datetime.strptime(end, '%Y-%m-%d').date()
-    else:
-        end_date = datetime.utcnow().date()
+    start_date = safe_date(start).date() if start and safe_date(start) else (datetime.utcnow() - timedelta(days=30)).date()
+    end_date = safe_date(end).date() if end and safe_date(end) else datetime.utcnow().date()
 
     sales = Sale.query.filter(
         Sale.vendor_id == current_user.id,
@@ -1321,12 +1629,20 @@ def vendor_add_sale():
         flash("You can only log sales for your own products.", "error")
         return redirect(url_for('vendor_profile'))
 
+    quantity = safe_int(request.form.get('quantity'), default=1, min_value=1)
+    amount = safe_int(request.form.get('amount'), default=0, min_value=0)
+    sale_date = safe_date(request.form.get('sale_date'))
+
+    if not sale_date:
+        flash("Please enter a valid sale date.", "error")
+        return redirect(url_for('vendor_profile'))
+
     sale = Sale(
         vendor_id=current_user.id,
         product_id=product.id,
-        quantity=int(request.form.get('quantity') or 1),
-        amount=int(request.form.get('amount') or 0),
-        sale_date=datetime.strptime(request.form.get('sale_date'), '%Y-%m-%d').date()
+        quantity=quantity,
+        amount=amount,
+        sale_date=sale_date.date()
     )
     db.session.add(sale)
     db.session.commit()
@@ -1362,6 +1678,23 @@ def vendor_orders():
     return render_template('vendor_orders.html', orders=orders_list)
 
 
+
+@app.route('/vendor/orders/<int:order_id>')
+@vendor_required
+def vendor_order_detail(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    vendor_items = [oi for oi in order.items if oi.product and oi.product.vendor_id == current_user.id]
+
+    if not vendor_items:
+        flash("You don't have permission to view this order.", "error")
+        return redirect(url_for('vendor_orders'))
+
+    vendor_subtotal = sum(oi.unit_price * oi.quantity for oi in vendor_items)
+
+    return render_template('vendor_order_detail.html', order=order, vendor_items=vendor_items, vendor_subtotal=vendor_subtotal)
+
+
 @app.route('/vendor/orders/<int:order_id>/status', methods=['POST'])
 @vendor_required
 def vendor_update_order_status(order_id):
@@ -1394,6 +1727,11 @@ def vendor_update_order_status(order_id):
         else:
             flash(message, "error")
         return redirect(url_for('vendor_orders'))
+
+    if new_status == 'shipped':  # NEW
+        order.carrier_name = request.form.get('carrier_name', '').strip() or None      # NEW
+        order.tracking_number = request.form.get('tracking_number', '').strip() or None  # NEW
+        order.tracking_url = request.form.get('tracking_url', '').strip() or None      # NEW
 
     order.status = new_status
     db.session.commit()
@@ -1685,6 +2023,7 @@ def payment_verify():
 #===============================================ADMIN===================================================================
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def admin_login():
     if request.method == 'GET':
         return render_template('admin_login.html')
@@ -1796,17 +2135,22 @@ def admin_add_coupon():
 
     code = (request.form.get('code') or '').strip().upper()
     discount_type = request.form.get('discount_type')
-    discount_value = int(request.form.get('discount_value') or 0)
-    min_order_amount = int(request.form.get('min_order_amount') or 0)
-    max_uses = request.form.get('max_uses')
-    expires_at = request.form.get('expires_at')
+    discount_value = safe_int(request.form.get('discount_value'), default=0)
+    min_order_amount = safe_int(request.form.get('min_order_amount'), default=0)
+    max_uses_raw = request.form.get('max_uses')
+    max_uses = safe_int(max_uses_raw, default=None) if max_uses_raw else None
+    expires_at_raw = request.form.get('expires_at')
+
+    if expires_at_raw:
+        expires_at = safe_date(expires_at_raw)
+        if not expires_at:
+            flash("Please enter a valid expiry date.", "error")
+            return render_template('admin_coupon_form.html', coupon=None)
+    else:
+        expires_at = None
 
     if not code or discount_type not in ('percent', 'flat') or discount_value <= 0:
         flash("Please fill in a valid code, type, and discount value.", "error")
-        return render_template('admin_coupon_form.html', coupon=None)
-
-    if Coupon.query.filter_by(code=code).first():
-        flash("A coupon with this code already exists.", "error")
         return render_template('admin_coupon_form.html', coupon=None)
 
     coupon = Coupon(
@@ -1814,8 +2158,8 @@ def admin_add_coupon():
         discount_type=discount_type,
         discount_value=discount_value,
         min_order_amount=min_order_amount,
-        max_uses=int(max_uses) if max_uses else None,
-        expires_at=datetime.strptime(expires_at, '%Y-%m-%d') if expires_at else None
+        max_uses=max_uses,
+        expires_at=expires_at
     )
     db.session.add(coupon)
     db.session.commit()
@@ -1849,6 +2193,7 @@ def admin_delete_coupon(coupon_id):
 @admin_required
 def admin_users():
     search_q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)  
 
     query = User.query
     if search_q:
@@ -1859,8 +2204,8 @@ def admin_users():
             )
         )
 
-    users = query.order_by(User.created_at.desc()).all()
-    return render_template('admin_users.html', users=users, search_q=search_q)
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=10, error_out=False) 
+    return render_template('admin_users.html', users=pagination.items, pagination=pagination, search_q=search_q)  
 
 
 @app.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
@@ -1878,6 +2223,52 @@ def admin_toggle_admin(user_id):
     return redirect(url_for('admin_users'))
 
 
+#===================================== Admin: Manage Vendors ====================================
+
+@app.route('/admin/vendors')
+@admin_required
+def admin_vendors():
+    search_q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)  # NEW
+
+    query = Vendor.query
+    if search_q:
+        query = query.filter(
+            or_(
+                Vendor.business_name.ilike(f"%{search_q}%"),
+                Vendor.email.ilike(f"%{search_q}%")
+            )
+        )
+
+    pagination = query.order_by(Vendor.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+
+    product_counts = dict(
+        db.session.query(Product.vendor_id, db.func.count(Product.id))
+        .group_by(Product.vendor_id).all()
+    )
+    revenue_by_vendor = dict(
+        db.session.query(Sale.vendor_id, db.func.sum(Sale.amount))
+        .group_by(Sale.vendor_id).all()
+    )
+
+    return render_template(
+        'admin_vendors.html',
+        vendors=pagination.items,  # CHANGED
+        pagination=pagination,  # NEW
+        search_q=search_q,
+        product_counts=product_counts,
+        revenue_by_vendor=revenue_by_vendor
+    )
+    
+
+@app.route('/admin/vendors/<int:vendor_id>/toggle-suspend', methods=['POST'])
+@admin_required
+def admin_toggle_vendor_suspend(vendor_id):
+    vendor = Vendor.query.get_or_404(vendor_id)
+    vendor.is_suspended = not vendor.is_suspended
+    db.session.commit()
+    flash(f"{vendor.business_name} {'suspended' if vendor.is_suspended else 'reinstated'}.", "info")
+    return redirect(url_for('admin_vendors'))
 
 #===================================== Admin: Offers ====================================
 
@@ -1902,10 +2293,10 @@ def admin_add_offer():
     image = request.files.get('offer_image')
     image_path = None
     if image and image.filename:
-        if not allowed_file(image.filename):
-            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
-            return render_template('admin_offer_form.html', offer=None)
-        image_path = save_product_image(image)
+        image_path, error = validate_and_save_image(image)
+        if error:
+            flash(error, "error")
+            return redirect(request.url)
 
     if not title or not image_path:
         flash("Please provide a title and an image.", "error")
@@ -1931,10 +2322,10 @@ def admin_edit_offer(offer_id):
 
     image = request.files.get('offer_image')
     if image and image.filename:
-        if not allowed_file(image.filename):
-            flash("Please upload a JPG, JPEG, PNG or WEBP image.", "error")
-            return render_template('admin_offer_form.html', offer=offer)
-        offer.image_url = save_product_image(image)
+        image_path, error = validate_and_save_image(image)
+        if error:
+            flash(error, "error")
+            return redirect(request.url)
 
     db.session.commit()
     flash("Offer updated.", "success")
@@ -1960,7 +2351,71 @@ def admin_delete_offer(offer_id):
     flash("Offer deleted.", "info")
     return redirect(url_for('admin_offers'))
 
+#===================================== Admin: Review Moderation ====================================
 
+@app.route('/admin/reviews')
+@admin_required
+def admin_reviews():
+    page = request.args.get('page', 1, type=int)  # NEW
+    pagination = Review.query.order_by(Review.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    return render_template('admin_reviews.html', reviews=pagination.items, pagination=pagination)  # CHANGED
+
+
+@app.route('/admin/reviews/<int:review_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_review(review_id):
+    review = Review.query.get_or_404(review_id)
+    db.session.delete(review)
+    db.session.commit()
+    flash("Review removed.", "info")
+    return redirect(url_for('admin_reviews'))
+
+
+
+#===================================== Admin: Returns ====================================
+
+@app.route('/admin/returns')
+@admin_required
+def admin_returns():
+    returns = Return.query.filter_by(status='requested').order_by(Return.requested_at.asc()).all()
+    return render_template('admin_returns.html', returns=returns)
+
+
+@app.route('/admin/returns/<int:return_id>/approve', methods=['POST'])
+@admin_required
+def admin_approve_return(return_id):
+    ret = Return.query.get_or_404(return_id)
+    if ret.status != 'requested':
+        flash("This return has already been resolved.", "error")
+        return redirect(url_for('admin_returns'))
+
+    ret.resolved_by_id = current_user.id
+    success, message = process_return_refund(ret)
+    db.session.commit()
+
+    if success:
+        flash(f"Return #{ret.id} approved. {message}", "success")
+    else:
+        # ret.resolved_by_id was set but status stays 'requested' since refund failed — admin can retry
+        db.session.rollback()
+        flash(message, "error")
+
+    return redirect(url_for('admin_returns'))
+
+@app.route('/admin/returns/<int:return_id>/reject', methods=['POST'])
+@admin_required
+def admin_reject_return(return_id):
+    ret = Return.query.get_or_404(return_id)
+    if ret.status != 'requested':
+        flash("This return has already been resolved.", "error")
+        return redirect(url_for('admin_returns'))
+
+    ret.status = 'rejected'
+    ret.resolved_at = datetime.utcnow()
+    ret.resolved_by_id = current_user.id
+    db.session.commit()
+    flash(f"Return #{ret.id} rejected.", "info")
+    return redirect(url_for('admin_returns'))
 
 
 #===============================================Offer Landing Page===================================================================
@@ -1973,7 +2428,7 @@ def offer_detail(offer_id):
         flash("This offer is no longer active.", "error")
         return redirect(url_for('catalogue'))
 
-    products = Product.query.filter_by(offer_id=offer.id).order_by(Product.created_at.desc()).all()
+    products = Product.query.filter_by(offer_id=offer.id, is_active=True).order_by(Product.created_at.desc()).all()
 
     wishlisted_ids = set()
     if current_user.is_authenticated and not getattr(current_user, 'is_vendor', False):
@@ -1987,22 +2442,45 @@ def offer_detail(offer_id):
 @admin_required
 def admin_products():
     search_q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)  # NEW
+
     query = Product.query
     if search_q:
         query = query.filter(Product.name.ilike(f"%{search_q}%"))
-    products = query.order_by(Product.created_at.desc()).all()
-    return render_template('admin_products.html', products=products, search_q=search_q)
+
+    pagination = query.order_by(Product.created_at.desc()).paginate(page=page, per_page=10, error_out=False)  # NEW
+    return render_template('admin_products.html', products=pagination.items, pagination=pagination, search_q=search_q)  # CHANGED
 
 
 @app.route('/admin/products/<int:product_id>/discount', methods=['POST'])
 @admin_required
 def admin_update_discount(product_id):
     product = Product.query.get_or_404(product_id)
-    discount = int(request.form.get('discount_percent') or 0)
-    discount = max(0, min(discount, 100))  # clamp — a bad value here shouldn't corrupt pricing
+    discount = safe_int(request.form.get('discount_percent'), default=0, min_value=0, max_value=100)
     product.discount_percent = discount
     db.session.commit()
     flash(f"Discount for {product.name} set to {discount}%.", "success")
+    return redirect(url_for('admin_products'))
+
+
+@app.route('/admin/products/<int:product_id>/toggle-active', methods=['POST'])
+@admin_required
+def admin_toggle_product_active(product_id):
+    product = Product.query.get_or_404(product_id)
+    product.is_active = not product.is_active
+    db.session.commit()
+    flash(f"{product.name} {'activated' if product.is_active else 'deactivated'}.", "info")
+    return redirect(url_for('admin_products'))
+
+
+@app.route('/admin/products/<int:product_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_product(product_id):
+    product = Product.query.get_or_404(product_id)
+    name = product.name
+    db.session.delete(product)
+    db.session.commit()
+    flash(f"{name} permanently deleted.", "info")
     return redirect(url_for('admin_products'))
 
 
@@ -2028,6 +2506,7 @@ def search():
 
     like_pattern = f"%{query}%"
     products_query = Product.query.filter(
+        Product.is_active == True,
         or_(
             Product.name.ilike(like_pattern),
             Product.description.ilike(like_pattern),
@@ -2117,8 +2596,8 @@ def search_history_clear():
 
 @app.route('/')
 def home():
-    best_sellers = Product.query.order_by(Product.created_at.desc()).limit(5).all()
-    new_arrivals = Product.query.order_by(Product.created_at.desc()).limit(2).all()
+    best_sellers = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(5).all()
+    new_arrivals = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(2).all()
     offer = Offer.query.filter_by(is_active=True).order_by(Offer.display_order.asc()).first()
     categories = db.session.query(Product.category).distinct().limit(3).all()
     categories = [c[0] for c in categories]
@@ -2184,10 +2663,11 @@ def create_admin(email, name, password):
         db.session.commit()
         click.echo(f"New admin account created: {user.email}")
 
-
+    
+    
   #===============================================MAIN===================================================================
    
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=not Config.IS_PRODUCTION)

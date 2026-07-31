@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Products · Admin · ORLE{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Products</h1>
+        <p>Search products and adjust discounts platform-wide.</p>
+    </div>
+
+    <div class="admin-quick-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-tan">← Back to Overview</a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>{{ pagination.total }} Product{{ 's' if pagination.total != 1 else '' }}</h2>
+            <form method="GET" action="{{ url_for('admin_products') }}" class="admin-search-form">
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_q }}"
+                    placeholder="Search by product name…"
+                    class="admin-search-input"
+                >
+                <button type="submit" class="btn-tan">Search</button>
+                {% if search_q %}
+                    <a href="{{ url_for('admin_products') }}" class="text-link">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if products %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Vendor</th>
+                        <th class="num">Price</th>
+                        <th class="num">Stock</th>
+                        <th class="num">Discount</th>
+                        <th class="num">Final Price</th>
+                        <th>Update Discount</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                        <tr>
+                            <td>
+                                <img
+                                    src="{{ product.image_url | product_image }}"
+                                    alt="{{ product.name }}"
+                                    class="admin-product-thumb"
+                                >
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.category }}</td>
+                            <td>{{ product.vendor.business_name if product.vendor else '—' }}</td>
+                            <td class="num">₹{{ "{:,}".format(product.price) }}</td>
+                            <td class="num">
+                                {% if product.requires_size %}
+                                    {{ product.sizes | sum(attribute='stock_quantity') }}
+                                {% else %}
+                                    {{ product.stock_quantity }}
+                                {% endif %}
+                            </td>
+                            <td class="num">{{ product.discount_percent }}%</td>
+                            <td class="num">₹{{ "{:,}".format(product.discounted_price) }}</td>
+                            <td>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('admin_update_discount', product_id=product.id) }}"
+                                    class="admin-inline-form"
+                                >
+                                    <input
+                                        type="number"
+                                        name="discount_percent"
+                                        value="{{ product.discount_percent }}"
+                                        min="0"
+                                        max="100"
+                                        class="admin-discount-input"
+                                    >
+                                    <button type="submit" class="btn-tan-sm">Save</button>
+                                </form>
+                            </td>
+                            <td>
+                                {% if product.is_active %}
+                                    <span class="order-status status-delivered">Active</span>
+                                {% else %}
+                                    <span class="order-status status-cancelled">Hidden</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                                    <form method="POST" action="{{ url_for('admin_toggle_product_active', product_id=product.id) }}" style="margin:0;">
+                                        {% if product.is_active %}
+                                            <button type="submit" style="background:none; border:none; padding:0; font-size:12px; font-weight:600; color:#b8860b; cursor:pointer; text-decoration:underline;">Deactivate</button>
+                                        {% else %}
+                                            <button type="submit" style="background:none; border:none; padding:0; font-size:12px; font-weight:600; color:#2e7d4f; cursor:pointer; text-decoration:underline;">Activate</button>
+                                        {% endif %}
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin_delete_product', product_id=product.id) }}" style="margin:0;" onsubmit="return confirm('Permanently delete {{ product.name }}? This cannot be undone.');">
+                                        <button type="submit" style="background:none; border:none; padding:0; font-size:12px; font-weight:600; color:#b3261e; cursor:pointer; text-decoration:underline;">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">
+                {% if search_q %}
+                    No products match “{{ search_q }}”.
+                {% else %}
+                    No products found.
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if pagination.pages > 1 %}
+        <div class="admin-pager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:20px;">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_products', page=pagination.prev_num, q=search_q) }}" class="btn-tan-sm">← Prev</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">← Prev</span>
+            {% endif %}
+
+            <span class="onboarding-sub">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_products', page=pagination.next_num, q=search_q) }}" class="btn-tan-sm">Next →</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">Next →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

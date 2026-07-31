@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Returns · Admin · ORLE{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Returns</h1>
+        <p>Review and approve or reject pending return requests.</p>
+    </div>
+
+    <div class="admin-quick-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-tan">← Back to Overview</a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>{{ returns|length }} Pending Return{{ 's' if returns|length != 1 else '' }}</h2>
+        </div>
+
+        {% if returns %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Customer</th>
+                        <th>Reason</th>
+                        <th>Requested</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ret in returns %}
+                        <tr>
+                            <td><a href="{{ url_for('order_detail', order_id=ret.order.id) }}">Order #{{ ret.order.id }}</a></td>
+                            <td>{{ ret.customer.name if ret.customer else '—' }}</td>
+                            <td>{{ ret.reason }}</td>
+                            <td>{{ ret.requested_at.strftime('%d %b %Y') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin_approve_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Approve this return and issue a refund?');">
+                                    <button type="submit" class="btn-tan-sm">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin_reject_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Reject this return request?');">
+                                    <button type="submit" class="btn-tan-sm btn-tan-sm-danger">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">No pending returns.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

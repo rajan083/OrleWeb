@@ -5,6 +5,7 @@
         {% for product, score, breakdown in ranked %}
             <div class="product-card">
                 <form action="{{ url_for('wishlist_toggle', product_id=product.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="wishlist-icon-btn {{ 'active' if product.id in wishlisted_ids else '' }}">
                         {{ heart_icon() }}
                     </button>

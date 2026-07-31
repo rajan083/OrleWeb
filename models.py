@@ -113,6 +113,8 @@ class Product(db.Model):
     requires_size = db.Column(db.Boolean, default=False, nullable=False)  # NEW — vendor toggles this on for clothing
     
     stock_quantity = db.Column(db.Integer, nullable=False, default=0)  # NEW — only meaningful when requires_size=False
+    
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # NEW — admin can deactivate without deleting
 
     @property
     def available_stock(self):
@@ -199,6 +201,7 @@ class Vendor(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     products = db.relationship('Product', backref='vendor', lazy=True)
+    is_suspended = db.Column(db.Boolean, default=False, nullable=False)  # NEW — admin-controlled login block
 
     is_vendor = True  # lets base.html tell customers and vendors apart without isinstance()
 
@@ -276,6 +279,9 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_amount = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(20), nullable=False, default='pending_payment')
+    tracking_number = db.Column(db.String(100), nullable=True)  # NEW
+    carrier_name = db.Column(db.String(100), nullable=True)     # NEW
+    tracking_url = db.Column(db.String(500), nullable=True)     # NEW
     user = db.relationship('User')
     
     # pending_payment -> placed -> shipped -> delivered  (or -> cancelled at any point)
@@ -437,3 +443,23 @@ class SearchHistory(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User')
+    
+class Return(db.Model):
+    __tablename__ = 'returns'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
+    order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id'), nullable=True)  # null = whole-order return
+    customer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='requested')  # requested, approved, rejected, refunded
+
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    order = db.relationship('Order')
+    order_item = db.relationship('OrderItem')
+    customer = db.relationship('User', foreign_keys=[customer_id])
+    resolved_by = db.relationship('User', foreign_keys=[resolved_by_id])

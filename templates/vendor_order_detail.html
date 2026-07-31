@@ -1,4 +1,4 @@
-{# order_detail.html #}
+{# vendor_order_detail.html #}
 {% extends "base.html" %}
 {% block title %}Order #{{ order.id }}{% endblock %}
 {% block content %}
@@ -9,7 +9,7 @@
     {% if order.status == 'cancelled' %}
         <div class="tracker-cancelled">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-            This order was cancelled. If a payment was made, it will be refunded within 5-7 business days.
+            This order was cancelled.
         </div>
     {% elif order.status == 'pending_payment' %}
         <div class="tracker-pending">
@@ -34,20 +34,13 @@
             {% endfor %}
         </div>
     {% endif %}
-    {% if order.tracking_number %}
+
     <div class="profile-card">
-        <h2 style="font-size:12px; color:var(--olive); text-transform:uppercase;">Tracking</h2>
-        <p>{{ order.carrier_name }} — {{ order.tracking_number }}</p>
-        {% if order.tracking_url %}
-            <a href="{{ order.tracking_url }}" target="_blank" rel="noopener">Track shipment →</a>
-        {% endif %}
-    </div>
-    {% endif %}
-    <div class="profile-card">
-        {% for item in order.items %}
+        <h2 style="font-size:12px; color:var(--olive); text-transform:uppercase;">Your Items in This Order</h2>
+        {% for item in vendor_items %}
             <div class="option-row"><span>{{ item.product_name }} × {{ item.quantity }}</span><strong>₹{{ "{:,}".format(item.unit_price * item.quantity) }}</strong></div>
         {% endfor %}
-        <div class="option-row"><span>Total</span><strong>₹{{ "{:,}".format(order.total_amount) }}</strong></div>
+        <div class="option-row"><span>Your Subtotal</span><strong>₹{{ "{:,}".format(vendor_subtotal) }}</strong></div>
     </div>
 
     <div class="profile-card">
@@ -57,23 +50,18 @@
         <p>{{ order.shipping_phone }}</p>
     </div>
 
-    {% if order.status == 'delivered' %}
-        {% if pending_return %}
-            <div class="tracker-pending">A return request is pending review for this order.</div>
-        {% else %}
-        <form action="{{ url_for('order_return_request', order_id=order.id) }}" method="POST" class="profile-card">
-            <h2 style="font-size:12px; color:var(--olive); text-transform:uppercase;">Request a Return</h2>
-            <textarea name="reason" placeholder="Tell us why you're returning this order" required style="width:100%; padding:8px; border:1px solid var(--light-grey); border-radius:3px; margin:8px 0;" rows="3"></textarea>
-            <button type="submit" class="btn-tan-sm">Submit Return Request</button>
-        </form>
-        {% endif %}
-    {% endif %}
-
-    {% if order.status in ['pending_payment', 'placed'] %}
-    <form action="{{ url_for('order_cancel', order_id=order.id) }}" method="POST" onsubmit="return confirm('Cancel this order? This cannot be undone.');">
-        <button type="submit" class="cancel-order-btn">Cancel Order</button>
+    <form action="{{ url_for('vendor_update_order_status', order_id=order.id) }}" method="POST" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+        <select name="status" id="status-select" onchange="document.getElementById('tracking-fields').style.display = this.value === 'shipped' ? 'flex' : 'none';" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">
+            <option value="shipped">Mark Shipped</option>
+            <option value="delivered">Mark Delivered</option>
+            <option value="cancelled">Cancel</option>
+        </select>
+        <div id="tracking-fields" style="display:none; flex-direction:column; gap:8px;">
+            <input type="text" name="carrier_name" placeholder="Carrier (e.g. Bluedart)" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">
+            <input type="text" name="tracking_number" placeholder="Tracking number" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">
+            <input type="url" name="tracking_url" placeholder="Tracking URL" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">
+        </div>
+        <button type="submit" style="width:auto; padding:8px 16px;">Update Status</button>
     </form>
-    {% endif %}
-    
 </div>
 {% endblock %}

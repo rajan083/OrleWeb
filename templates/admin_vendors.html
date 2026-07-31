@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Vendors · Admin · ORLE{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Vendors</h1>
+        <p>Search vendors, review activity, and suspend accounts if needed.</p>
+    </div>
+
+    <div class="admin-quick-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-tan">← Back to Overview</a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>{{ pagination.total }} Vendor{{ 's' if pagination.total != 1 else '' }}</h2>
+            <form method="GET" action="{{ url_for('admin_vendors') }}" class="admin-search-form">
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_q }}"
+                    placeholder="Search by business name or email…"
+                    class="admin-search-input"
+                >
+                <button type="submit" class="btn-tan">Search</button>
+                {% if search_q %}
+                    <a href="{{ url_for('admin_vendors') }}" class="text-link">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if vendors %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Business</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th class="num">Products</th>
+                        <th class="num">Revenue</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vendor in vendors %}
+                        <tr>
+                            <td>{{ vendor.business_name }}</td>
+                            <td>{{ vendor.email }}</td>
+                            <td>{{ vendor.phone_number or '—' }}</td>
+                            <td class="num">{{ product_counts.get(vendor.id, 0) }}</td>
+                            <td class="num">₹{{ "{:,}".format(revenue_by_vendor.get(vendor.id, 0)) }}</td>
+                            <td>
+                                {% if vendor.is_suspended %}
+                                    <span class="order-status status-cancelled">Suspended</span>
+                                {% else %}
+                                    <span class="order-status status-delivered">Active</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ vendor.created_at.strftime('%d %b %Y') }}</td>
+                            <td>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('admin_toggle_vendor_suspend', vendor_id=vendor.id) }}"
+                                    class="admin-inline-form"
+                                >
+                                    {% if vendor.is_suspended %}
+                                        <button type="submit" class="btn-tan-sm">Reinstate</button>
+                                    {% else %}
+                                        <button type="submit" class="btn-tan-sm btn-tan-sm-danger">Suspend</button>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">
+                {% if search_q %}
+                    No vendors match “{{ search_q }}”.
+                {% else %}
+                    No vendors found.
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if pagination.pages > 1 %}
+        <div class="admin-pager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:20px;">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_vendors', page=pagination.prev_num, q=search_q) }}" class="btn-tan-sm">← Prev</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">← Prev</span>
+            {% endif %}
+
+            <span class="onboarding-sub">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_vendors', page=pagination.next_num, q=search_q) }}" class="btn-tan-sm">Next →</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">Next →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

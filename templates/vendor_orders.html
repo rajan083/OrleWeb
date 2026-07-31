@@ -13,6 +13,7 @@
                         <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
                     </div>
                     <p class="onboarding-sub" style="margin:2px 0 0;">{{ order.shipping_name }} · {{ order.created_at.strftime('%d %b %Y') }}</p>
+                    <a href="{{ url_for('vendor_order_detail', order_id=order.id) }}" style="font-size:12px; color:var(--olive);">View Details →</a>
                 </div>
                 <form action="{{ url_for('vendor_update_order_status', order_id=order.id) }}" method="POST" style="display:flex; gap:8px;">
                     <select name="status" style="padding:8px; border:1px solid var(--light-grey); border-radius:3px;">

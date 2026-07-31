@@ -3142,3 +3142,105 @@ footer {
     margin-bottom: 0;
     padding-right: 0;
 }
+
+/* ── Admin Products page — additions ── */
+/* Matches the palette already used in admin_dashboard.html:
+   olive #5C6B4A / #3E4A32, dark #343434 / #232320,
+   tan/stone #B8B29F / #C9C7BF, cream grid #EDEAE2 */
+
+.admin-search-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-search-input {
+    padding: 8px 12px;
+    border: 1px solid #C9C7BF;
+    border-radius: 6px;
+    background: #FAF9F6;
+    font-size: 13px;
+    min-width: 220px;
+    color: #232320;
+}
+
+.admin-search-input:focus {
+    outline: none;
+    border-color: #5C6B4A;
+    box-shadow: 0 0 0 2px rgba(92, 107, 74, 0.15);
+}
+
+.admin-product-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #EDEAE2;
+    background: #F4F2EC;
+    display: block;
+}
+
+.admin-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-discount-input {
+    width: 64px;
+    padding: 6px 8px;
+    border: 1px solid #C9C7BF;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: right;
+    color: #232320;
+    background: #FAF9F6;
+}
+
+.admin-discount-input:focus {
+    outline: none;
+    border-color: #5C6B4A;
+    box-shadow: 0 0 0 2px rgba(92, 107, 74, 0.15);
+}
+
+/* Small tan button variant for compact inline actions (e.g. table rows) */
+.btn-tan-sm {
+    display: inline-block;
+    padding: 6px 14px;
+    background: #5C6B4A;
+    color: #FAF9F6;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.btn-tan-sm:hover {
+    background: #3E4A32;
+}
+
+/* Section head needs to allow the search form to sit alongside the title on wide screens
+   and wrap below it on narrow ones — safe to merge into an existing .admin-section-head
+   rule if you already have one; these properties just make room for the new form. */
+.admin-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 640px) {
+    .admin-search-form {
+        width: 100%;
+    }
+    .admin-search-input {
+        flex: 1;
+        min-width: 0;
+    }
+}
+

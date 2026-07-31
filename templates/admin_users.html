@@ -13,7 +13,7 @@
     <div class="admin-section">
         <div class="admin-section-head">
             <h2>All Users</h2>
-            <span class="text-link">{{ users|length }} total</span>
+            <span class="text-link">{{ pagination.total }} total</span>
         </div>
 
         <form method="GET" action="{{ url_for('admin_users') }}" class="inline-sort-form" style="margin-bottom: 16px;">
@@ -69,6 +69,24 @@
             </table>
         {% else %}
             <div class="admin-empty-state">No users found{{ ' for "' + search_q + '"' if search_q else '' }}.</div>
+        {% endif %}
+
+        {% if pagination.pages > 1 %}
+        <div class="admin-pager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:20px;">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_users', page=pagination.prev_num, q=search_q) }}" class="btn-tan-sm">← Prev</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">← Prev</span>
+            {% endif %}
+
+            <span class="onboarding-sub">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_users', page=pagination.next_num, q=search_q) }}" class="btn-tan-sm">Next →</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">Next →</span>
+            {% endif %}
+        </div>
         {% endif %}
     </div>
 

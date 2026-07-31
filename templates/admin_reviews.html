@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Reviews · Admin · ORLE{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Manage Reviews</h1>
+        <p>Remove reviews that violate guidelines or contain inappropriate content.</p>
+    </div>
+
+    <div class="admin-quick-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-tan">← Back to Overview</a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>{{ pagination.total }} Review{{ 's' if pagination.total != 1 else '' }}</h2>
+        </div>
+
+        {% if reviews %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Customer</th>
+                        <th class="num">Rating</th>
+                        <th>Comment</th>
+                        <th>Posted</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review in reviews %}
+                        <tr>
+                            <td>
+                                {% if review.product %}
+                                    <a href="{{ url_for('product_detail', product_id=review.product.id) }}">{{ review.product.name }}</a>
+                                {% else %}
+                                    <span class="text-link">Deleted product</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ review.user.name if review.user else '—' }}</td>
+                            <td class="num">{{ review.rating }}/5</td>
+                            <td>{{ review.comment or '—' }}</td>
+                            <td>{{ review.created_at.strftime('%d %b %Y') }}</td>
+                            <td>
+                                <form
+                                    method="POST"
+                                    action="{{ url_for('admin_delete_review', review_id=review.id) }}"
+                                    class="admin-inline-form"
+                                    onsubmit="return confirm('Remove this review? This cannot be undone.');"
+                                >
+                                    <button type="submit" class="btn-tan-sm btn-tan-sm-danger">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">No reviews yet.</div>
+        {% endif %}
+
+        {% if pagination.pages > 1 %}
+        <div class="admin-pager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:20px;">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_reviews', page=pagination.prev_num) }}" class="btn-tan-sm">← Prev</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">← Prev</span>
+            {% endif %}
+
+            <span class="onboarding-sub">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_reviews', page=pagination.next_num) }}" class="btn-tan-sm">Next →</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">Next →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
