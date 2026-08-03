@@ -86,7 +86,6 @@
                         <a href="{{ url_for('addresses') }}">Saved Addresses</a>
                         <a href="{{ url_for('profile') }}">Profile</a>
                         <a href="{{ url_for('orders') }}">My Orders</a>
-                        <a href="{{ url_for('wishlist') }}">My Vault</a>
                         {% if current_user.is_admin %}
                             <a href="{{ url_for('admin_dashboard') }}">Admin</a>
                             {% endif %}

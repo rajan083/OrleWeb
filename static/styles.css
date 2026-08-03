@@ -14,6 +14,8 @@
     --footer-bg: #4a4e4a;
 }
 
+.hidden { display: none; }
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -33,17 +35,17 @@ a {
 }
 
 /* ============ NAV ============ */
-nav{
 
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:20px 48px;
-    background:var(--cream);
-    border-bottom:1px solid var(--light-grey);
-    position:sticky;
-    top:0;
-    z-index:1000;
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 48px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--light-grey);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .wordmark-sm {
@@ -52,16 +54,16 @@ nav{
     letter-spacing: 0.06em;
 }
 
-.nav-container{
-    display:flex;
-    align-items:center;
-    gap:60px;
+.nav-container {
+    display: flex;
+    align-items: center;
+    gap: 60px;
 }
 
-.nav-links,.nav-icons{
-    display:flex;
-    align-items:center;
-    gap:28px;
+.nav-links,.nav-icons {
+    display: flex;
+    align-items: center;
+    gap: 28px;
 }
 
 .nav-links a, .nav-icons a {
@@ -98,18 +100,22 @@ nav{
 }
 
 .hamburger-line:nth-child(1) { top: 1px; }
+
 .hamburger-line:nth-child(2) { top: 8px; }
+
 .hamburger-line:nth-child(3) { top: 15px; }
 
 .menu-toggle.active .hamburger-line:nth-child(1) { top: 8px; transform: rotate(45deg); }
+
 .menu-toggle.active .hamburger-line:nth-child(2) { opacity: 0; }
+
 .menu-toggle.active .hamburger-line:nth-child(3) { top: 8px; transform: rotate(-45deg); }
 
 @media (max-width: 900px) {
     .menu-toggle { display: block; }
 }
 
-@media (max-width:900px){
+@media (max-width:900px) {
 
 nav{
     padding:18px 20px;
@@ -161,8 +167,8 @@ nav{
 }
 }
 
-
 /* ============ FORMS (login/register/reset) ============ */
+
 .form-wrapper {
     display: flex;
     align-items: center;
@@ -209,9 +215,7 @@ input {
     background: var(--cream);
 }
 
-input:focus {
-    border-color: var(--olive);
-}
+input:focus { border-color: var(--olive); }
 
 input:disabled {
     color: var(--grey);
@@ -244,11 +248,10 @@ button:hover, .btn-save:hover {
     color: var(--grey);
 }
 
-.form-links a:hover {
-    color: var(--olive);
-}
+.form-links a:hover { color: var(--olive); }
 
 /* ============ FLASH MESSAGES ============ */
+
 .flash-container {
     position: fixed;
     top: 84px;
@@ -274,9 +277,7 @@ button:hover, .btn-save:hover {
     animation: flash-in 0.3s ease forwards;
 }
 
-.flash-message.flash-hide {
-    animation: flash-out 0.4s ease forwards;
-}
+.flash-message.flash-hide { animation: flash-out 0.4s ease forwards; }
 
 @keyframes flash-in {
     from { opacity: 0; transform: translateY(-12px); }
@@ -288,11 +289,26 @@ button:hover, .btn-save:hover {
     to   { opacity: 0; transform: translateY(-12px); }
 }
 
-.flash-success { background: var(--success-bg); color: var(--success-text); border-left: 3px solid var(--success-text); }
-.flash-error   { background: var(--error-bg);   color: var(--error-text);   border-left: 3px solid var(--error-text); }
-.flash-info    { background: var(--off-white);  color: var(--charcoal);    border-left: 3px solid var(--olive); }
+.flash-success {
+    background: var(--success-bg);
+    color: var(--success-text);
+    border-left: 3px solid var(--success-text);
+}
+
+.flash-error {
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-left: 3px solid var(--error-text);
+}
+
+.flash-info {
+    background: var(--off-white);
+    color: var(--charcoal);
+    border-left: 3px solid var(--olive);
+}
 
 /* ============ ONBOARDING / EDIT PROFILE ============ */
+
 .onboarding {
     max-width: 480px;
     margin: 0 auto;
@@ -397,11 +413,11 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ HERO ============ */
+
 .hero {
     position: relative;
     height: 560px;
-    background-image:
-        linear-gradient(180deg, rgba(20,20,18,0.05) 0%, rgba(20,20,18,0.75) 100%),
+    background-image: linear-gradient(180deg, rgba(20,20,18,0.05) 0%, rgba(20,20,18,0.75) 100%),
         url('https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1600&q=80');
     background-size: cover;
     background-position: center 20%;
@@ -444,6 +460,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ DASHBOARD / CATALOGUE SECTIONS ============ */
+
 .offers-strip {
     display: flex;
     gap: 16px;
@@ -476,6 +493,7 @@ button:hover, .btn-save:hover {
 }
 
 .offer-overlay h3 { font-family: 'Fraunces', serif; font-size: 16px; margin-bottom: 2px; }
+
 .offer-overlay p { font-size: 12.5px; opacity: 0.9; }
 
 .dashboard-section, .catalogue {
@@ -528,7 +546,11 @@ button:hover, .btn-save:hover {
     gap: 22px;
 }
 
-.product-card { background: var(--off-white); display: block; }
+.product-card {
+    background: var(--off-white);
+    display: block;
+    position: relative;
+}
 
 .product-card img {
     width: 100%;
@@ -538,10 +560,13 @@ button:hover, .btn-save:hover {
 }
 
 .product-card-body { padding: 14px 6px; }
+
 .product-card-body h3, .product-card-body h4 { font-size: 13.5px; font-weight: 500; margin-bottom: 4px; }
+
 .product-price { font-size: 12.5px; color: var(--grey); }
 
 /* ============ PRODUCT DETAIL ============ */
+
 .product-detail {
     max-width: 900px;
     margin: 0 auto;
@@ -577,6 +602,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ PROFILE PAGE ============ */
+
 .profile-page {
     max-width: 560px;
     margin: 0 auto;
@@ -635,6 +661,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ PROFILE HERO ============ */
+
 .profile-hero {
     display: flex;
     align-items: center;
@@ -673,6 +700,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ PROFILE STATS ROW ============ */
+
 .profile-stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -689,9 +717,7 @@ button:hover, .btn-save:hover {
     transition: border-color 0.2s;
 }
 
-.profile-stat:hover {
-    border-color: var(--olive);
-}
+.profile-stat:hover { border-color: var(--olive); }
 
 .profile-stat strong {
     display: block;
@@ -708,14 +734,13 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ PROFILE QUICK LINK ROWS ============ */
+
 .profile-link-row {
     text-decoration: none;
     cursor: pointer;
 }
 
-.profile-link-row:hover {
-    color: var(--olive);
-}
+.profile-link-row:hover { color: var(--olive); }
 
 .profile-link-arrow {
     color: var(--grey);
@@ -747,13 +772,9 @@ button:hover, .btn-save:hover {
     font-size: 13.5px;
 }
 
-.profile-card .option-row:last-child {
-    border-bottom: none;
-}
+.profile-card .option-row:last-child { border-bottom: none; }
 
-.profile-card .option-row span {
-    color: var(--grey);
-}
+.profile-card .option-row span { color: var(--grey); }
 
 .profile-card .option-row strong {
     font-weight: 500;
@@ -811,12 +832,10 @@ button:hover, .btn-save:hover {
     height: 45vh;
     min-height: 320px;
     max-height: 520px;
-    padding: 0 7.5%; /* (100% - active slide width) / 2, keeps first/last slide centerable */
+    padding: 0 7.5%;
 }
 
-.carousel::-webkit-scrollbar {
-    display: none;
-}
+.carousel::-webkit-scrollbar { display: none; }
 
 @supports (scrollbar-width: auto) {
     .carousel {
@@ -890,6 +909,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ INTRO SECTION ============ */
+
 .intro-section {
     max-width: 640px;
     margin: 56px auto;
@@ -919,6 +939,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ FEATURE STRIP ============ */
+
 .feature-strip {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -949,6 +970,7 @@ button:hover, .btn-save:hover {
 }
 
 /* ============ FOOTER ============ */
+
 footer {
     background: var(--footer-bg);
     color: #FFFFFF;
@@ -994,9 +1016,7 @@ footer {
     margin-bottom: 12px;
 }
 
-.footer-col a:hover {
-    color: var(--tan);
-}
+.footer-col a:hover { color: var(--tan); }
 
 .footer-bottom {
     max-width: 1100px;
@@ -1012,6 +1032,7 @@ footer {
 }
 
 /* ============ BRAND HERO (big wordmark + tagline) ============ */
+
 .brand-hero {
     text-align: center;
     padding: 50px 20px 20px;
@@ -1040,6 +1061,7 @@ footer {
 }
 
 /* ============ TRUST STRIP ============ */
+
 .trust-strip {
     display: flex;
     justify-content: center;
@@ -1058,6 +1080,7 @@ footer {
 }
 
 /* ============ MISSION SECTION ============ */
+
 .mission-section {
     max-width: 1000px;
     margin: 0 auto;
@@ -1100,6 +1123,7 @@ footer {
 }
 
 /* ============ SCROLL ROW (best sellers) ============ */
+
 .scroll-row {
     display: flex;
     gap: 18px;
@@ -1120,9 +1144,8 @@ footer {
 }
 
 /* ============ ARRIVALS SPREAD ============ */
-.arrivals-spread {
-    padding: 50px 0;
-}
+
+.arrivals-spread { padding: 50px 0; }
 
 .spread-grid {
     display: grid;
@@ -1146,9 +1169,7 @@ footer {
     transition: transform 0.4s ease;
 }
 
-.spread-item:hover img {
-    transform: scale(1.03);
-}
+.spread-item:hover img { transform: scale(1.03); }
 
 .spread-label {
     position: absolute;
@@ -1167,6 +1188,7 @@ footer {
 }
 
 /* ============ CATEGORY DISCOVERY ============ */
+
 .category-discovery {
     max-width: 900px;
     margin: 0 auto;
@@ -1187,6 +1209,7 @@ footer {
 }
 
 /* ============ SALE BANNER ============ */
+
 .sale-banner {
     height: 400px;
     background-size: cover;
@@ -1214,6 +1237,7 @@ footer {
 }
 
 /* ============ TESTIMONIAL ============ */
+
 .testimonial-section {
     background: var(--charcoal);
     color: var(--cream);
@@ -1243,6 +1267,7 @@ footer {
 }
 
 /* ============ WORDMARK BANNER ============ */
+
 .wordmark-banner {
     text-align: center;
     padding: 60px 20px;
@@ -1263,6 +1288,7 @@ footer {
 }
 
 /* ============ NEWSLETTER ============ */
+
 .newsletter-section {
     background: var(--off-white);
     display: flex;
@@ -1290,9 +1316,7 @@ footer {
     flex-wrap: wrap;
 }
 
-.newsletter-form input {
-    background: #fff;
-}
+.newsletter-form input { background: #fff; }
 
 .newsletter-form button {
     width: auto;
@@ -1305,7 +1329,6 @@ footer {
 }
 
 /* ============ WISHLIST HEART (product cards) ============ */
-.product-card { position: relative; }
 
 .wishlist-icon-btn {
     position: absolute;
@@ -1340,6 +1363,7 @@ footer {
 }
 
 /* ============ ADD TO BAG / WISHLIST (product detail) ============ */
+
 .detail-actions {
     display: flex;
     gap: 12px;
@@ -1400,12 +1424,15 @@ footer {
 }
 
 .btn-wishlist:hover { border-color: var(--tan); color: var(--tan); }
+
 .btn-wishlist:hover svg { stroke: var(--tan); }
 
 .btn-wishlist.active { border-color: var(--tan); color: var(--tan); }
+
 .btn-wishlist.active svg { fill: var(--tan); stroke: var(--tan); }
 
 /* ============ NAV BAG ICON WITH COUNT ============ */
+
 .nav-bag-link {
     position: relative;
     display: flex;
@@ -1439,9 +1466,8 @@ footer {
 }
 
 /* ============ ACCOUNT DROPDOWN ============ */
-.account-menu {
-    position: relative;
-}
+
+.account-menu { position: relative; }
 
 .account-menu-toggle {
     display: flex;
@@ -1466,9 +1492,7 @@ footer {
     transition: transform 0.2s ease;
 }
 
-.account-menu.open .chevron {
-    transform: rotate(180deg);
-}
+.account-menu.open .chevron { transform: rotate(180deg); }
 
 .account-dropdown {
     display: none;
@@ -1483,9 +1507,7 @@ footer {
     z-index: 200;
 }
 
-.account-menu.open .account-dropdown {
-    display: block;
-}
+.account-menu.open .account-dropdown { display: block; }
 
 .account-dropdown a {
     display: block;
@@ -1511,6 +1533,7 @@ footer {
 }
 
 /* ============ ORDERS LIST ============ */
+
 .orders-list {
     display: flex;
     flex-direction: column;
@@ -1528,9 +1551,7 @@ footer {
     transition: border-color 0.2s;
 }
 
-.order-row:hover {
-    border-color: var(--olive);
-}
+.order-row:hover { border-color: var(--olive); }
 
 .order-thumb {
     width: 56px;
@@ -1586,15 +1607,17 @@ footer {
 }
 
 .status-placed { background: var(--off-white); color: var(--charcoal); }
+
 .status-shipped { background: #eef3fb; color: #2a4d8f; }
+
 .status-delivered { background: var(--success-bg); color: var(--success-text); }
+
 .status-cancelled { background: var(--error-bg); color: var(--error-text); }
 
 @media (max-width: 600px) {
     .order-row { flex-wrap: wrap; }
     .order-row-items { white-space: normal; }
 }
-
 
 .carousel-slide-label {
     position: absolute;
@@ -1626,6 +1649,7 @@ footer {
 }
 
 /* ============ PRODUCT DETAIL PAGE ============ */
+
 .pd-page {
     max-width: 1000px;
     margin: 0 auto;
@@ -1641,13 +1665,9 @@ footer {
     flex-wrap: wrap;
 }
 
-.pd-breadcrumb a:hover {
-    color: var(--olive);
-}
+.pd-breadcrumb a:hover { color: var(--olive); }
 
-.pd-breadcrumb-current {
-    color: var(--charcoal);
-}
+.pd-breadcrumb-current { color: var(--charcoal); }
 
 .pd-image-wrap {
     position: sticky;
@@ -1695,9 +1715,7 @@ footer {
     padding: 0;
 }
 
-.qty-btn:hover {
-    background: var(--off-white);
-}
+.qty-btn:hover { background: var(--off-white); }
 
 #qtyInput {
     width: 42px;
@@ -1713,13 +1731,9 @@ footer {
     margin-top: 0;
 }
 
-.pd-wishlist-form {
-    margin-top: 12px;
-}
+.pd-wishlist-form { margin-top: 12px; }
 
-.pd-wishlist-form .btn-wishlist {
-    width: 100%;
-}
+.pd-wishlist-form .btn-wishlist { width: 100%; }
 
 .pd-trust-row {
     display: grid;
@@ -1753,6 +1767,7 @@ footer {
         gap: 20px;
     }
 }
+
 .nav-vault-link {
     display: flex;
     align-items: center;
@@ -1768,11 +1783,10 @@ footer {
     transition: stroke 0.2s;
 }
 
-.nav-vault-link:hover svg {
-    stroke: var(--olive);
-}
+.nav-vault-link:hover svg { stroke: var(--olive); }
 
 /* ============ PREFERENCES MODAL ============ */
+
 .prefs-modal-backdrop {
     display: none;
     position: fixed;
@@ -1784,9 +1798,7 @@ footer {
     padding: 20px;
 }
 
-.prefs-modal-backdrop.open {
-    display: flex;
-}
+.prefs-modal-backdrop.open { display: flex; }
 
 .prefs-modal {
     background: var(--cream);
@@ -1830,13 +1842,9 @@ footer {
     margin: 22px 0 6px;
 }
 
-.prefs-modal .option-row {
-    padding: 10px 0;
-}
+.prefs-modal .option-row { padding: 10px 0; }
 
-.prefs-modal .onboarding-sub {
-    margin-bottom: 6px;
-}
+.prefs-modal .onboarding-sub { margin-bottom: 20px; }
 
 .prefs-modal .body-type-grid {
     gap: 8px;
@@ -1848,22 +1856,16 @@ footer {
     font-size: 11px;
 }
 
-.prefs-modal .body-type-card img {
-    height: 64px;
-}
+.prefs-modal .body-type-card img { height: 70px; }
 
 .prefs-modal .swatch {
     width: 22px;
     height: 22px;
 }
 
-.prefs-modal .swatch-row {
-    gap: 12px;
-}
+.prefs-modal .swatch-row { gap: 12px; }
 
-.prefs-modal .form-error {
-    margin-bottom: 14px;
-}
+.prefs-modal .form-error { margin-bottom: 14px; }
 
 @media (max-width: 420px) {
     .prefs-modal .body-type-grid {
@@ -1872,28 +1874,8 @@ footer {
     }
 }
 
-.prefs-modal .onboarding-sub {
-    margin-bottom: 20px;
-}
-
-.prefs-modal .body-type-grid {
-    gap: 8px;
-}
-
-.prefs-modal .body-type-card {
-    font-size: 11px;
-    padding: 8px 4px;
-}
-
-.prefs-modal .body-type-card img {
-    height: 70px;
-}
-
-.prefs-modal .swatch {
-    width: 22px;
-    height: 22px;
-}
 /* ============ ORDER TRACKER ============ */
+
 .order-tracker {
     display: flex;
     align-items: center;
@@ -1963,9 +1945,7 @@ footer {
     transition: background 0.2s;
 }
 
-.tracker-line.done {
-    background: var(--olive);
-}
+.tracker-line.done { background: var(--olive); }
 
 .tracker-cancelled {
     display: flex;
@@ -1993,15 +1973,14 @@ footer {
 }
 
 /* ============ ADMIN DASHBOARD ============ */
+
 .admin-page {
     max-width: 1100px;
     margin: 0 auto;
     padding: 40px 20px 60px;
 }
 
-.admin-header {
-    margin-bottom: 32px;
-}
+.admin-header { margin-bottom: 32px; }
 
 .admin-header h1 {
     font-family: 'Fraunces', serif;
@@ -2031,9 +2010,7 @@ footer {
     transition: border-color 0.2s;
 }
 
-.admin-stat-card:hover {
-    border-color: var(--olive);
-}
+.admin-stat-card:hover { border-color: var(--olive); }
 
 .admin-stat-card strong {
     display: block;
@@ -2066,8 +2043,10 @@ footer {
 .admin-section-head {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .admin-section-head h2 {
@@ -2102,18 +2081,14 @@ footer {
     font-size: 13.5px;
 }
 
-.admin-status-row:last-child {
-    border-bottom: none;
-}
+.admin-status-row:last-child { border-bottom: none; }
 
 .admin-status-row span:first-child {
     color: var(--grey);
     text-transform: capitalize;
 }
 
-.admin-status-row strong {
-    font-weight: 500;
-}
+.admin-status-row strong { font-weight: 500; }
 
 .admin-table {
     width: 100%;
@@ -2136,9 +2111,7 @@ footer {
     border-bottom: 1px solid var(--off-white);
 }
 
-.admin-table tr:last-child td {
-    border-bottom: none;
-}
+.admin-table tr:last-child td { border-bottom: none; }
 
 .admin-table td.num {
     text-align: right;
@@ -2153,6 +2126,7 @@ footer {
 }
 
 /* ============ STAR RATING DISPLAY ============ */
+
 .pd-rating-summary {
     display: inline-flex;
     align-items: center;
@@ -2192,6 +2166,7 @@ footer {
 }
 
 /* ============ REVIEWS SECTION ============ */
+
 .pd-reviews-section {
     border-top: 1px solid var(--light-grey);
     padding-top: 40px;
@@ -2232,9 +2207,7 @@ footer {
 }
 
 .pd-review-form select:focus,
-.pd-review-form textarea:focus {
-    border-color: var(--olive);
-}
+.pd-review-form textarea:focus { border-color: var(--olive); }
 
 .pd-review-submit {
     width: auto;
@@ -2242,7 +2215,6 @@ footer {
     padding: 13px 26px;
 }
 
-/* Star rating input — CSS-only right-to-left hover trick */
 .pd-star-input {
     display: flex;
     flex-direction: row-reverse;
@@ -2251,9 +2223,7 @@ footer {
     font-size: 26px;
 }
 
-.pd-star-input input {
-    display: none;
-}
+.pd-star-input input { display: none; }
 
 .pd-star-input label {
     color: var(--light-grey);
@@ -2264,9 +2234,7 @@ footer {
 
 .pd-star-input label:hover,
 .pd-star-input label:hover ~ label,
-.pd-star-input input:checked ~ label {
-    color: var(--tan);
-}
+.pd-star-input input:checked ~ label { color: var(--tan); }
 
 .pd-review-list {
     display: flex;
@@ -2316,7 +2284,6 @@ footer {
 
 /* ============ VENDOR PROFILE CHARTS GRID ============ */
 
-
 .chart-tabs {
     display: flex;
     gap: 8px;
@@ -2337,9 +2304,7 @@ footer {
     transition: background 0.15s, color 0.15s;
 }
 
-.chart-tab:hover {
-    background: var(--light-grey);
-}
+.chart-tab:hover { background: var(--light-grey); }
 
 .chart-tab.active {
     background: var(--charcoal);
@@ -2351,9 +2316,7 @@ footer {
     position: relative;
 }
 
-.chart-canvas-wrap canvas {
-    max-height: 320px;
-}
+.chart-canvas-wrap canvas { max-height: 320px; }
 
 .admin-chart-wrap-sm {
     height: 200px;
@@ -2372,9 +2335,7 @@ footer {
     margin-bottom: 0;
 }
 
-.admin-status-list {
-    flex: 1;
-}
+.admin-status-list { flex: 1; }
 
 @media (max-width: 600px) {
     .admin-status-split {
@@ -2387,6 +2348,7 @@ footer {
 }
 
 /* ============ VENDOR PRODUCT FORM ============ */
+
 .vpf-checkbox-label {
     display: flex;
     align-items: center;
@@ -2424,9 +2386,7 @@ footer {
     color: var(--grey);
 }
 
-.vpf-size-input input {
-    padding: 10px 12px;
-}
+.vpf-size-input input { padding: 10px 12px; }
 
 .vpf-gallery-grid {
     display: grid;
@@ -2435,9 +2395,7 @@ footer {
     margin-top: 10px;
 }
 
-.vpf-gallery-item {
-    position: relative;
-}
+.vpf-gallery-item { position: relative; }
 
 .vpf-gallery-item img {
     width: 100%;
@@ -2473,9 +2431,8 @@ footer {
 }
 
 /* ============ SIZE SELECTOR (product detail) ============ */
-.pd-size-select {
-    margin-top: 20px;
-}
+
+.pd-size-select { margin-top: 20px; }
 
 .pd-size-options {
     display: flex;
@@ -2520,9 +2477,7 @@ footer {
     text-decoration: line-through;
 }
 
-.pd-size-pill.out-of-stock input {
-    cursor: not-allowed;
-}
+.pd-size-pill.out-of-stock input { cursor: not-allowed; }
 
 .pd-purchase-form-wrap {
     display: flex;
@@ -2531,6 +2486,7 @@ footer {
 }
 
 /* ============ PRODUCT DETAIL — GALLERY THUMBNAILS ============ */
+
 .pd-thumb-row {
     display: flex;
     gap: 8px;
@@ -2558,9 +2514,7 @@ footer {
     display: block;
 }
 
-.pd-thumb:hover {
-    opacity: 1;
-}
+.pd-thumb:hover { opacity: 1; }
 
 .pd-thumb.active {
     border-color: var(--charcoal);
@@ -2580,17 +2534,15 @@ footer {
     padding: 4px;
     display: flex;
     align-items: center;
-}
-
-.search-toggle {
-    color: #1a1a1a; /* match your nav icon color exactly */
+    color: #1a1a1a;
 }
 
 .search-toggle svg {
     width: 20px;
     height: 20px;
-    stroke: #1a1a1a; /* same value, set directly rather than via currentColor */
+    stroke: #1a1a1a;
 }
+
 .search-form {
     width: 0;
     overflow: hidden;
@@ -2612,15 +2564,14 @@ footer {
     font-family: inherit;
     outline: none;
 }
+
 .search-results-page {
     max-width: 1200px;
     margin: 0 auto;
     padding: 48px 24px 80px;
 }
 
-.search-results-header {
-    margin-bottom: 40px;
-}
+.search-results-header { margin-bottom: 40px; }
 
 .search-results-header h1 {
     font-size: 28px;
@@ -2676,9 +2627,8 @@ footer {
     border-top: 1px solid #e5e5e0;
     border-bottom: 1px solid #e5e5e0;
 }
-.form-card .onboarding-sub {
-    margin-bottom: 6px;
-}
+
+.form-card .onboarding-sub { margin-bottom: 6px; }
 
 .summary-row {
     display: flex;
@@ -2686,10 +2636,12 @@ footer {
     padding: 0.35rem 0;
     color: #6b6b64;
 }
+
 .discount-row {
     font-weight: bold;
     color: #2e7d32;
 }
+
 .total-row {
     color: #232320;
     font-weight: 600;
@@ -2701,9 +2653,7 @@ footer {
 
 /* ============ FILTER BAR SPACING ============ */
 
-.catalogue-filter-bar {
-    margin-bottom: 34px;
-}
+.catalogue-filter-bar { margin-bottom: 34px; }
 
 .filter-controls {
     display: flex;
@@ -2773,9 +2723,7 @@ footer {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.inline-sort-form select:hover {
-    border-color: var(--olive);
-}
+.inline-sort-form select:hover { border-color: var(--olive); }
 
 .inline-sort-form select:focus {
     border-color: var(--olive);
@@ -2791,30 +2739,7 @@ footer {
     pointer-events: none;
 }
 
-.inline-sort-form select::-ms-expand {
-    display: none;
-}
-
-.filter-controls {
-    display: flex;
-    align-items: flex-end;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-top: 20px;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.filter-group label {
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--grey);
-}
+.inline-sort-form select::-ms-expand { display: none; }
 
 .price-inputs {
     display: flex;
@@ -2835,6 +2760,7 @@ footer {
 }
 
 /* ============ SHARED STYLED SELECT (Size / Color / Sort) ============ */
+
 .select-wrap {
     position: relative;
     display: inline-flex;
@@ -2861,9 +2787,7 @@ footer {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.filter-group select:hover {
-    border-color: var(--olive);
-}
+.filter-group select:hover { border-color: var(--olive); }
 
 .filter-group select:focus {
     border-color: var(--olive);
@@ -2879,29 +2803,9 @@ footer {
     pointer-events: none;
 }
 
-.filter-group select::-ms-expand {
-    display: none;
-}
+.filter-group select::-ms-expand { display: none; }
 
 /* ============ APPLY BUTTON — small, inline, not full width ============ */
-.filter-apply-btn {
-    width: auto;
-    padding: 7px 20px;
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    border-radius: 5px;
-    align-self: center;
-}
-
-.clear-filters-link {
-    align-self: center;
-}
-
-.filter-label-spacer {
-    visibility: hidden;
-    font-size: 10.5px;
-    line-height: 1;
-}
 
 .filter-apply-btn {
     width: auto;
@@ -2919,6 +2823,12 @@ footer {
     height: 30px;
     display: inline-flex;
     align-items: center;
+}
+
+.filter-label-spacer {
+    visibility: hidden;
+    font-size: 10.5px;
+    line-height: 1;
 }
 
 .field .select-wrap select {
@@ -2944,9 +2854,7 @@ footer {
 }
 
 .field .select-wrap select:hover,
-.field .select-wrap select:focus {
-    border-color: var(--olive);
-}
+.field .select-wrap select:focus { border-color: var(--olive); }
 
 .field .select-wrap .select-chevron {
     position: absolute;
@@ -2966,9 +2874,8 @@ footer {
     margin-top: 4px;
 }
 
-.search-bar-wrap {
-    position: relative;
-}
+.search-bar-wrap { position: relative; }
+
 .search-dropdown {
     position: absolute;
     top: 100%;
@@ -2983,6 +2890,7 @@ footer {
     overflow-y: auto;
     z-index: 50;
 }
+
 .search-dropdown-header {
     display: flex;
     justify-content: space-between;
@@ -2993,6 +2901,7 @@ footer {
     letter-spacing: 0.04em;
     color: #9ca3af;
 }
+
 .search-clear-btn {
     background: none;
     border: none;
@@ -3000,6 +2909,7 @@ footer {
     color: #b45309;
     cursor: pointer;
 }
+
 .search-dropdown-item {
     display: flex;
     align-items: center;
@@ -3009,25 +2919,28 @@ footer {
     color: #111827;
     font-size: 0.9rem;
 }
-.search-dropdown-item:hover {
-    background: #f9fafb;
-}
+
+.search-dropdown-item:hover { background: #f9fafb; }
+
 .search-dropdown-icon {
     color: #9ca3af;
     font-size: 0.8rem;
 }
+
 .search-dropdown-thumb {
     width: 32px;
     height: 32px;
     object-fit: cover;
     border-radius: 4px;
 }
+
 .search-dropdown-empty {
     padding: 14px;
     font-size: 0.85rem;
     color: #9ca3af;
     text-align: center;
 }
+
 .admin-quick-links {
     display: flex;
     gap: 16px;
@@ -3040,10 +2953,12 @@ footer {
     font-size: 0.85em;
     margin-right: 8px;
 }
+
 .price-discounted {
     color: #b45309;
     font-weight: 700;
 }
+
 .discount-badge {
     display: inline-block;
     margin-left: 8px;
@@ -3061,12 +2976,14 @@ footer {
     overflow: hidden;
     margin-bottom: 32px;
 }
+
 .offer-hero-img {
     width: 100%;
     max-height: 320px;
     object-fit: cover;
     display: block;
 }
+
 .offer-hero-text {
     position: absolute;
     bottom: 0;
@@ -3076,19 +2993,21 @@ footer {
     background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
     color: #fff;
 }
+
 .offer-hero-text h1 {
     color: #fff;
     margin: 0 0 6px;
 }
-.offer-hero-text .onboarding-sub {
-    color: rgba(255,255,255,0.85);
-}
+
+.offer-hero-text .onboarding-sub { color: rgba(255,255,255,0.85); }
+
 .admin-offer-thumb {
     width: 60px;
     height: 40px;
     object-fit: cover;
     border-radius: 4px;
 }
+
 .admin-row-actions {
     display: flex;
     gap: 12px;
@@ -3102,6 +3021,7 @@ footer {
     gap: 12px;
     margin-top: 12px;
 }
+
 .address-box {
     display: block;
     position: relative;
@@ -3111,19 +3031,21 @@ footer {
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
 }
-.address-box:hover {
-    border-color: var(--olive);
-}
+
+.address-box:hover { border-color: var(--olive); }
+
 .address-box-selected {
     border-color: var(--olive);
     background: rgba(92, 107, 74, 0.05);
 }
+
 .address-box input[type="radio"] {
     position: absolute;
     top: 14px;
     right: 14px;
     width: auto;
 }
+
 .address-box-head {
     display: flex;
     align-items: center;
@@ -3131,6 +3053,7 @@ footer {
     margin-bottom: 4px;
     padding-right: 24px;
 }
+
 .address-box-new {
     display: flex;
     align-items: center;
@@ -3138,12 +3061,14 @@ footer {
     min-height: 70px;
     border-style: dashed;
 }
+
 .address-box-new .address-box-head {
     margin-bottom: 0;
     padding-right: 0;
 }
 
-/* ── Admin Products page — additions ── */
+/* Admin Products page additions */
+
 /* Matches the palette already used in admin_dashboard.html:
    olive #5C6B4A / #3E4A32, dark #343434 / #232320,
    tan/stone #B8B29F / #C9C7BF, cream grid #EDEAE2 */
@@ -3204,7 +3129,6 @@ footer {
     box-shadow: 0 0 0 2px rgba(92, 107, 74, 0.15);
 }
 
-/* Small tan button variant for compact inline actions (e.g. table rows) */
 .btn-tan-sm {
     display: inline-block;
     padding: 6px 14px;
@@ -3219,20 +3143,7 @@ footer {
     transition: background 0.15s ease;
 }
 
-.btn-tan-sm:hover {
-    background: #3E4A32;
-}
-
-/* Section head needs to allow the search form to sit alongside the title on wide screens
-   and wrap below it on narrow ones — safe to merge into an existing .admin-section-head
-   rule if you already have one; these properties just make room for the new form. */
-.admin-section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-}
+.btn-tan-sm:hover { background: #3E4A32; }
 
 @media (max-width: 640px) {
     .admin-search-form {
@@ -3243,4 +3154,3 @@ footer {
         min-width: 0;
     }
 }
-

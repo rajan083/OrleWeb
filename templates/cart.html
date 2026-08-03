@@ -33,6 +33,41 @@
         {% endfor %}
 
         <div class="profile-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="document.getElementById('availableCoupons').classList.toggle('hidden')">
+                <strong>View available coupons</strong>
+                <span style="font-size:12px; color:#666;">▾</span>
+            </div>
+            <div id="availableCoupons" class="hidden" style="margin-top:12px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    {% for c in available_coupons %}
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid {{ 'var(--success-text)' if c.eligible else '#ddd' }}; border-radius:6px; opacity:{{ '1' if c.eligible else '0.55' }};">
+                        <div>
+                            <strong>{{ c.code }}</strong>
+                            <p class="onboarding-sub" style="margin:2px 0 0;">
+                                {% if c.discount_type == 'percent' %}{{ c.discount_value }}% off{% else %}₹{{ c.discount_value }} off{% endif %}
+                                {% if c.min_order_amount %} · Min order ₹{{ "{:,}".format(c.min_order_amount) }}{% endif %}
+                            </p>
+                            {% if not c.eligible %}
+                                <p style="margin:4px 0 0; font-size:12px; color:var(--error-text);">
+                                    {{ c.ineligible_reason }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        {% if c.eligible %}
+                            <form action="{{ url_for('apply_coupon') }}" method="POST">
+                                <input type="hidden" name="coupon_code" value="{{ c.code }}">
+                                <button type="submit" class="btn-save" style="width:auto; padding:8px 14px;">Apply</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p class="onboarding-sub">No active coupons right now.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-card">
             {% if coupon %}
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>

@@ -780,8 +780,15 @@ def cart():
                 coupon = None
 
     final_total = total - discount
-    return render_template('cart.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon)
 
+    available_coupons = []
+    for c in Coupon.query.all():
+        eligible, reason = c.is_valid_for(total)
+        c.eligible = eligible
+        c.ineligible_reason = reason
+        available_coupons.append(c)
+
+    return render_template('cart.html', items=items, total=total, discount=discount, final_total=final_total, coupon=coupon, available_coupons=available_coupons)
 
 @app.route('/cart/apply-coupon', methods=['POST'])
 @login_required
@@ -1334,9 +1341,9 @@ def vendor_login():
 @app.route('/vendor/dashboard')
 @vendor_required
 def vendor_dashboard():
-    page = request.args.get('page', 1, type=int)
-    pagination = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
-    return render_template('vendor_dashboard.html', products=pagination.items, pagination=pagination)
+    page = request.args.get('page', 1, type=int)  # NEW
+    pagination = Product.query.filter_by(vendor_id=current_user.id).order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
+    return render_template('vendor_dashboard.html', products=pagination.items, pagination=pagination)  # CHANGED
 
 
 @app.route('/vendor/products/add', methods=['GET', 'POST'])
@@ -1381,13 +1388,13 @@ def vendor_add_product():
 
     gallery_files = request.files.getlist("gallery_images")
     for order, gfile in enumerate(gallery_files):
-        path, error = validate_and_save_image(gfile)
+        path, error = validate_and_save_image(gfile)  # CHANGED
         if path:
             db.session.add(ProductImage(product_id=product.id, image_url=path, display_order=order))
     # silently skips invalid gallery files rather than failing the whole submit — a bad gallery image
-    # shouldn't block the primary listing from being saved
 
     if product.requires_size:
+        
         for size in SIZE_CHOICES:
             qty = safe_int(request.form.get(f'stock_{size}'), default=0, min_value=0)
             if qty > 0:
@@ -1492,9 +1499,10 @@ def vendor_edit_product(product_id):
         ).delete(synchronize_session=False)
 
     # ── Gallery: add new images ────────────────────────────────
+    existing_count = ProductImage.query.filter_by(product_id=product.id).count()
     gallery_files = request.files.getlist("gallery_images")
     for order, gfile in enumerate(gallery_files):
-        path, error = validate_and_save_image(gfile)
+        path, error = validate_and_save_image(gfile)  # CHANGED
         if path:
             db.session.add(ProductImage(product_id=product.id, image_url=path, display_order=order))
         # silently skips invalid gallery files rather than failing the whole submit — a bad gallery image
@@ -1567,7 +1575,7 @@ def vendor_profile():
     chart_labels = list(daily_totals.keys())
     chart_values = list(daily_totals.values())
 
-    # group by product for units-sold bar chart + revenue-share doughnut
+    # NEW — group by product for units-sold bar chart + revenue-share doughnut
     product_totals = {}  # name -> {'units': x, 'revenue': y}
     for sale in sales:
         name = sale.product.name if sale.product else 'Unknown'
@@ -1582,7 +1590,7 @@ def vendor_profile():
     product_units = [totals['units'] for _, totals in sorted_products]
     product_revenue = [totals['revenue'] for _, totals in sorted_products]
 
-    # sales grouped by weekday, to spot which days perform best
+    # NEW — sales grouped by weekday, to spot which days perform best
     weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     weekday_totals = [0] * 7
     for sale in sales:
@@ -1720,10 +1728,10 @@ def vendor_update_order_status(order_id):
             flash(message, "error")
         return redirect(url_for('vendor_orders'))
 
-    if new_status == 'shipped':
-        order.carrier_name = request.form.get('carrier_name', '').strip() or None
-        order.tracking_number = request.form.get('tracking_number', '').strip() or None
-        order.tracking_url = request.form.get('tracking_url', '').strip() or None
+    if new_status == 'shipped':  # NEW
+        order.carrier_name = request.form.get('carrier_name', '').strip() or None      # NEW
+        order.tracking_number = request.form.get('tracking_number', '').strip() or None  # NEW
+        order.tracking_url = request.form.get('tracking_url', '').strip() or None      # NEW
 
     order.status = new_status
     db.session.commit()
@@ -1825,7 +1833,7 @@ def checkout():
         flash("Your bag is empty.", "error")
         return redirect(url_for('cart'))
 
-    # re-check stock right before payment, since cart items can sit for a while
+    # NEW — re-check stock right before payment, since cart items can sit for a while
     stock_problems = []
     for item in items:
         available = item.product.stock_for_size(item.size)
@@ -1962,7 +1970,7 @@ def payment_verify():
         flash("You don't have permission to complete this order.", "error")
         return redirect(url_for('cart'))
 
-    # if the webhook already finalized this order, don't redo the work
+    # NEW — if the webhook already finalized this order, don't redo the work
     if order.payment_status == 'paid':
         flash("Payment successful. Your order has been placed.", "success")
         return redirect(url_for('order_detail', order_id=order.id))
@@ -2221,7 +2229,7 @@ def admin_toggle_admin(user_id):
 @admin_required
 def admin_vendors():
     search_q = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
+    page = request.args.get('page', 1, type=int)  # NEW
 
     query = Vendor.query
     if search_q:
@@ -2232,7 +2240,7 @@ def admin_vendors():
             )
         )
 
-    pagination = query.order_by(Vendor.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
+    pagination = query.order_by(Vendor.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
 
     product_counts = dict(
         db.session.query(Product.vendor_id, db.func.count(Product.id))
@@ -2245,8 +2253,8 @@ def admin_vendors():
 
     return render_template(
         'admin_vendors.html',
-        vendors=pagination.items,
-        pagination=pagination,
+        vendors=pagination.items,  # CHANGED
+        pagination=pagination,  # NEW
         search_q=search_q,
         product_counts=product_counts,
         revenue_by_vendor=revenue_by_vendor
@@ -2348,9 +2356,9 @@ def admin_delete_offer(offer_id):
 @app.route('/admin/reviews')
 @admin_required
 def admin_reviews():
-    page = request.args.get('page', 1, type=int)
-    pagination = Review.query.order_by(Review.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
-    return render_template('admin_reviews.html', reviews=pagination.items, pagination=pagination)
+    page = request.args.get('page', 1, type=int)  # NEW
+    pagination = Review.query.order_by(Review.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
+    return render_template('admin_reviews.html', reviews=pagination.items, pagination=pagination)  # CHANGED
 
 
 @app.route('/admin/reviews/<int:review_id>/delete', methods=['POST'])
@@ -2434,14 +2442,14 @@ def offer_detail(offer_id):
 @admin_required
 def admin_products():
     search_q = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
+    page = request.args.get('page', 1, type=int)  # NEW
 
     query = Product.query
     if search_q:
         query = query.filter(Product.name.ilike(f"%{search_q}%"))
 
-    pagination = query.order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
-    return render_template('admin_products.html', products=pagination.items, pagination=pagination, search_q=search_q)
+    pagination = query.order_by(Product.created_at.desc()).paginate(page=page, per_page=12, error_out=False)  # NEW
+    return render_template('admin_products.html', products=pagination.items, pagination=pagination, search_q=search_q)  # CHANGED
 
 
 @app.route('/admin/products/<int:product_id>/discount', methods=['POST'])
@@ -2627,8 +2635,8 @@ def home():
         carousel_products=carousel_products,
         mission_products=mission_products
     )
-
-
+    
+    
 #===============================================CLI: Create/Promote Admin===================================================================
 
 @app.cli.command('create-admin')
@@ -2651,11 +2659,11 @@ def create_admin(email, name, password):
         db.session.add(user)
         db.session.commit()
         click.echo(f"New admin account created: {user.email}")
-
-
-#===============================================MAIN===================================================================
-
+        
+    
+  #===============================================MAIN===================================================================
+   
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=not Config.IS_PRODUCTION)
+    app.run(debug=True, use_reloader=False)
