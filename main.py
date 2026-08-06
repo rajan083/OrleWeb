@@ -82,20 +82,24 @@ razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.confi
 
 
 def send_email(to, subject, body):
-    """Sends a plain-text email via Resend's HTTPS API."""
-    response = requests.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {app.config['RESEND_API_KEY']}"},
-        json={
-            "from": app.config['MAIL_DEFAULT_SENDER'],
-            "to": [to],
-            "subject": subject,
-            "text": body,
-        },
-        timeout=10,
-    )
-    response.raise_for_status()
-    return response.json()
+    """Sends a plain-text email via Resend's HTTPS API. Failures are logged but never crash the calling request."""
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {app.config['RESEND_API_KEY']}"},
+            json={
+                "from": app.config['MAIL_DEFAULT_SENDER'],
+                "to": [to],
+                "subject": subject,
+                "text": body,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        sentry_sdk.capture_exception(e)
+        return None
 
 
 @app.errorhandler(413)
@@ -275,6 +279,7 @@ def register():
     send_verification_email(new_user, next_page)
     flash("Account created! Check your email to verify before logging in.", "success")
     return render_template('check_email.html', email=email)
+
 
  #===============================================Email Verification===================================================================
 
