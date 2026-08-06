@@ -1670,6 +1670,32 @@ def vendor_profile():
         end_date=end_date.isoformat()
     )
     
+@app.route('/vendor/profile/edit', methods=['GET', 'POST'])
+@vendor_required
+def vendor_edit_profile():
+    if request.method == 'GET':
+        return render_template('vendor_edit_profile.html', vendor=current_user)
+
+    business_name = request.form.get('business_name')
+    phone_number = request.form.get('phone_number')
+
+    if not business_name:
+        flash("Business name can't be empty.", "error")
+        return render_template('vendor_edit_profile.html', vendor=current_user)
+
+    current_user.business_name = business_name
+    current_user.phone_number = phone_number
+
+    # Bank / payout details — all optional, admin uses these for manual settlement
+    current_user.bank_account_holder = request.form.get('bank_account_holder') or None
+    current_user.bank_account_number = request.form.get('bank_account_number') or None
+    current_user.bank_ifsc = (request.form.get('bank_ifsc') or '').strip().upper() or None
+    current_user.bank_name = request.form.get('bank_name') or None
+    current_user.upi_id = (request.form.get('upi_id') or '').strip() or None
+
+    db.session.commit()
+    flash("Your business details have been updated.", "success")
+    return redirect(url_for('vendor_profile'))
 
 @app.route('/vendor/sales/add', methods=['POST'])
 @vendor_required
@@ -1914,6 +1940,13 @@ def checkout():
     final_total = total - discount
     # ─────────────────────────────────────────────────────────
 
+    # Razorpay's minimum order amount is ₹1 (100 paise). A large flat coupon,
+    # or a 100%-off percent coupon, can drive final_total to 0 or below —
+    # catch that here instead of letting Razorpay's order.create() reject it.
+    if final_total < 1:
+        flash("This order's total is too low to process after the discount applied. Please adjust your cart or remove the coupon.", "error")
+        return redirect(url_for('cart'))
+ 
     saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.is_default.desc()).all()
 
     if request.method == 'GET':

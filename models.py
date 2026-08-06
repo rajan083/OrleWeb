@@ -199,6 +199,13 @@ class Vendor(db.Model, UserMixin):
     password_hash = db.Column(db.String(255), nullable=False)
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    bank_account_holder = db.Column(db.String(200), nullable=True)
+    bank_account_number = db.Column(db.String(30), nullable=True)
+    bank_ifsc = db.Column(db.String(11), nullable=True)
+    bank_name = db.Column(db.String(150), nullable=True)
+    upi_id = db.Column(db.String(100), nullable=True)  # optional alternative to full bank details
+
 
     products = db.relationship('Product', backref='vendor', lazy=True)
     is_suspended = db.Column(db.Boolean, default=False, nullable=False)  # NEW — admin-controlled login block

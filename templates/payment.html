@@ -23,6 +23,15 @@
             </div>
         </div>
 
+        <div class="payment-method-hint">
+            <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px; margin-right:4px;">
+                <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+            UPI, QR code, cards, netbanking, and wallets all accepted
+        </div>
+
         <button id="payButton" class="btn-save">Pay Now</button>
     </div>
 </div>
@@ -63,8 +72,13 @@
             },
             prefill: {
                 name: "{{ order.shipping_name }}",
+                email: "{{ order.user.email }}",
                 contact: "{{ order.shipping_phone }}"
             },
+            // No custom config.display block — Razorpay's default layout already puts
+            // UPI (with QR) first, followed by Cards, EMI, Netbanking, Wallet, Pay Later.
+            // A custom block config was tried here and rendered an empty pane instead —
+            // the default ordering does the job correctly with less to maintain.
             theme: { color: "#232320" }
         };
 
@@ -72,4 +86,5 @@
         razorpayCheckout.open();
     };
 </script>
+
 {% endblock %}

@@ -5,6 +5,26 @@
     <h1>{{ vendor.business_name }}</h1>
     <p class="onboarding-sub">{{ vendor.email }}</p>
 
+    <div class="profile-card" style="margin:20px 0;">
+        <div class="profile-card-head">
+            <h2 style="font-size:12px; color:var(--olive); text-transform:uppercase;">Business Details</h2>
+            <a href="{{ url_for('vendor_edit_profile') }}" class="text-link">Edit</a>
+        </div>
+        <div class="option-list">
+            <div class="option-row"><span>Phone</span><strong>{{ vendor.phone_number or "Not provided" }}</strong></div>
+            <div class="option-row">
+                <span>Payout details</span>
+                <strong>
+                    {% if vendor.bank_account_number or vendor.upi_id %}
+                        Added
+                    {% else %}
+                        <span style="color:var(--olive);">Not set up</span>
+                    {% endif %}
+                </strong>
+            </div>
+        </div>
+    </div>
+
     <form method="GET" action="{{ url_for('vendor_profile') }}" style="display:flex; gap:12px; align-items:end; margin:24px 0;">
         <div class="field">
             <label>From</label>
