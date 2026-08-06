@@ -43,6 +43,9 @@ A Flutter mobile app is being built alongside this as a separate client.
   coexisting with customer auth via a shared Flask-Login session (differentiated by an
   `is_vendor` flag and a prefixed session identity so one `user_loader` can resolve either
   account type); accounts can be suspended by an admin
+- **Profile & payout details** — vendors can edit their business name/phone (email locked) and
+  maintain bank account or UPI details for payouts; these are informational only (looked up by
+  admins for manual settlement) and are not wired to an automated payout system
 - **Product listing management** — add, edit, delete products, including cover + gallery image
   uploads with server-side validation (real image decode via Pillow, re-encoded and re-saved
   under a fresh filename — not just an extension check), per-size stock for sized items,
@@ -59,6 +62,9 @@ A Flutter mobile app is being built alongside this as a separate client.
 - **User management** — search, paginate, and grant/revoke admin access
 - **Vendor management** — search, paginate, suspend/reinstate vendor accounts, per-vendor
   product counts and revenue
+- **Sales & payout tracking** — search/filter every logged sale across vendors, see total
+  outstanding (unpaid) revenue, and mark individual sales as paid once a manual payout has been
+  sent, using the vendor's bank/UPI details as reference
 - **Product moderation** — search/paginate all products, adjust discounts, activate/deactivate,
   or permanently delete
 - **Coupon management** — create percent/flat coupons with minimum order value, usage caps, and
@@ -113,6 +119,8 @@ Orle-web/
 ├── models.py                   # User, UserProfile, Product, Offer, Vendor, Sale,
 │                                # Wishlist, CartItem, Order, OrderItem, Address, Review,
 │                                # ProductImage, ProductSize, Coupon, SearchHistory, Return
+│                                # Vendor carries bank/UPI payout fields; Sale carries
+│                                # is_paid / paid_at / paid_by for admin payout tracking
 ├── recommendations.py           # Rule-based scoring engine
 ├── seed_data.py                 # Populates sample men's formalwear + offers
 ├── requirements.txt
@@ -141,9 +149,11 @@ Orle-web/
     ├── vendor_login.html / vendor_register.html
     ├── vendor_forgot_password.html / vendor_reset_password.html
     ├── vendor_dashboard.html / vendor_product_form.html / vendor_profile.html
+    ├── vendor_edit_profile.html    # Business info + bank/UPI payout details
     ├── vendor_orders.html / vendor_order_detail.html
     ├── admin_login.html / admin_dashboard.html
     ├── admin_users.html / admin_vendors.html / admin_products.html
+    ├── admin_sales.html            # Cross-vendor sales list + mark-as-paid tracking
     ├── admin_coupons.html / admin_coupon_form.html
     ├── admin_offers.html / admin_offer_form.html
     ├── admin_reviews.html / admin_returns.html
@@ -263,6 +273,7 @@ Visit `http://127.0.0.1:5000`.
 | `/vendor/dashboard` | GET | Vendor's own product listings (paginated) |
 | `/vendor/products/add` / `/vendor/products/<id>/edit` / `/vendor/products/<id>/delete` | — | Product management (requires vendor login) |
 | `/vendor/profile` | GET | Sales charts + filterable sale log |
+| `/vendor/profile/edit` | GET, POST | Edit business name/phone and bank/UPI payout details |
 | `/vendor/sales/add` / `/vendor/sales/<id>/delete` | POST | Log / remove a sale entry |
 | `/vendor/orders` / `/vendor/orders/<id>` | GET | Orders containing the vendor's products |
 | `/vendor/orders/<id>/status` | POST | Update order status (shipped/delivered/cancelled) |
@@ -270,6 +281,8 @@ Visit `http://127.0.0.1:5000`.
 | `/admin` | GET | Admin dashboard — revenue, orders, top products/vendors |
 | `/admin/users` / `/admin/users/<id>/toggle-admin` | GET, POST | User management |
 | `/admin/vendors` / `/admin/vendors/<id>/toggle-suspend` | GET, POST | Vendor management |
+| `/admin/sales` | GET | Cross-vendor sales list, search/filter by paid status |
+| `/admin/sale/<id>/toggle-paid` | POST | Mark a sale as paid/unpaid once manually settled |
 | `/admin/products` / `/admin/products/<id>/discount` / `/admin/products/<id>/toggle-active` / `/admin/products/<id>/delete` | — | Product moderation |
 | `/admin/coupons` / `/admin/coupons/add` / `/admin/coupons/<id>/toggle` / `/admin/coupons/<id>/delete` | — | Coupon management |
 | `/admin/offers` / `/admin/offers/add` / `/admin/offers/<id>/edit` / `/admin/offers/<id>/toggle` / `/admin/offers/<id>/delete` | — | Offer/banner management |
@@ -305,6 +318,23 @@ rather than replacing the rules outright.
   (idempotency-keyed so a retried request can't double-refund), and both use `with_for_update()`
   row locking to avoid a race between a customer and a vendor/admin acting on the same order.
 
+## Vendor payouts
+
+Vendor sales are settled **manually**, not automatically. Customer payments go into the
+platform's own Razorpay account; each sale is logged against the vendor via `Sale`. Vendors
+maintain bank account or UPI details on their profile (`/vendor/profile/edit`) purely as a
+lookup — the app does not move money to them.
+
+Admins use `/admin/sales` to see every logged sale (searchable by vendor, filterable by paid
+status, with a running total of unpaid revenue), send the payout manually outside the app using
+the vendor's stored bank/UPI details, then mark the sale as paid via
+`/admin/sale/<id>/toggle-paid` — which stamps `paid_at` and `paid_by` for a basic audit trail.
+
+If automated vendor payouts are needed later, the natural upgrade path is **Razorpay Route**:
+vendors get their own linked accounts (requiring their own KYC through Razorpay), and payments
+are split automatically at the time of purchase instead of settled by hand. This is a
+meaningfully larger integration than the current manual-tracking setup and isn't wired up yet.
+
 ## Deployment notes
 
 - Never run with `debug=True` in production.
@@ -330,3 +360,5 @@ rather than replacing the rules outright.
 - [ ] Vendor two-factor authentication (deferred until there's a concrete need for it)
 - [ ] Persistent rate-limit storage (Redis) as a standard part of the production deploy, not an
       optional fallback
+- [ ] Automated vendor payouts via Razorpay Route (linked accounts + split payments), replacing
+      the current manual mark-as-paid tracking
