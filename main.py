@@ -24,11 +24,22 @@ from flask_limiter.util import get_remote_address
 from PIL import Image, UnidentifiedImageError
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
+import io
+import cloudinary
+import cloudinary.uploader
+
 
 
 app = Flask(__name__)
 Config.validate()
 app.config.from_object(Config)
+
+cloudinary.config(
+    cloud_name=app.config['CLOUDINARY_CLOUD_NAME'],
+    api_key=app.config['CLOUDINARY_API_KEY'],
+    api_secret=app.config['CLOUDINARY_API_SECRET'],
+    secure=True
+)
 
 csrf = CSRFProtect(app)
 
@@ -1488,13 +1499,24 @@ def validate_and_save_image(file_storage):
         return None, "This file isn't a valid image."
 
     if img.format == "JPEG" and img.mode in ("RGBA", "P"):
-        img = img.convert("RGB")  # JPEG can't encode alpha/palette data — convert first or save() will error
-
+        img = img.convert("RGB")
+ 
     ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[img.format]
-    filename = f"{uuid.uuid4().hex}.{ext}"
-    img.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-
-    return f"uploads/products/{filename}", None
+    buffer = io.BytesIO()
+    img.save(buffer, format=img.format)
+    buffer.seek(0)
+ 
+    try:
+        result = cloudinary.uploader.upload(
+            buffer,
+            public_id=uuid.uuid4().hex,
+            folder="orle/products",
+            resource_type="image"
+        )
+    except Exception:
+        return None, "Image upload failed. Please try again."
+ 
+    return result["secure_url"], None
 
 @app.template_filter('product_image')
 def product_image(image_url):
@@ -2823,4 +2845,4 @@ def create_admin(email, name, password):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, host='127.0.0.1', port=5000)

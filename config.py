@@ -31,6 +31,10 @@ class Config:
     RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
     REDIS_URL = os.environ.get('REDIS_URL')  # NEW
+    CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME')
+    CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY')
+    CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET')
+
 
     # Cookie / session hardening
     SESSION_COOKIE_HTTPONLY = True
