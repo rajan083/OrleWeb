@@ -57,7 +57,8 @@ if app.config.get('SENTRY_DSN'):
         integrations=[FlaskIntegration()],
         traces_sample_rate=0.1,
         environment='production' if Config.IS_PRODUCTION else 'development',
-        send_default_pii=False,  # or True, your call — see note above
+        send_default_pii=False,
+        shutdown_timeout=0,
     )
     
 UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads", "products")
@@ -178,15 +179,15 @@ login_manager.login_view = 'login'
 @login_manager.user_loader
 def load_user(user_id):
     if "-" not in user_id:
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     kind, real_id = [x.strip() for x in user_id.split("-", 1)]
 
     if kind == "user":
-        return User.query.get(int(real_id))
+        return db.session.get(User, int(real_id))
 
     elif kind == "vendor":
-        return Vendor.query.get(int(real_id))
+        return db.session.get(Vendor, int(real_id))
 
     return None
 
@@ -1812,7 +1813,7 @@ def vendor_update_order_status(order_id):
         return redirect(url_for('vendor_orders'))
 
     if new_status == 'cancelled':
-        order = Order.query.with_for_update().get(order.id)  
+        order = db.session.get(Order, order.id, with_for_update=True)
         if order.status not in CANCELLABLE_STATUSES:
             flash(f"This order can no longer be cancelled — it's already {order.status}.", "error")
             return redirect(url_for('vendor_orders'))
