@@ -3265,3 +3265,42 @@ footer {
         right: -10px;
     }
 }
+
+@media (max-width: 700px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .product-card-body {
+        padding: 10px 4px;
+    }
+
+    .product-card-body h3,
+    .product-card-body h4 {
+        font-size: 12.5px;
+        line-height: 1.3;
+    }
+
+    .product-price {
+        font-size: 11.5px;
+    }
+
+    .wishlist-icon-btn {
+        width: 28px;
+        height: 28px;
+        top: 6px;
+        right: 6px;
+    }
+
+    .wishlist-icon-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+@media (max-width: 380px) {
+    .product-grid {
+        gap: 8px;
+    }
+}
