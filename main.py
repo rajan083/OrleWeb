@@ -10,7 +10,6 @@ from models import db, User, UserProfile, Product, Offer, Vendor, Sale, Wishlist
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
-from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
 import razorpay
@@ -27,7 +26,7 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 import io
 import cloudinary
 import cloudinary.uploader
-
+import requests
 
 
 app = Flask(__name__)
@@ -77,10 +76,26 @@ db.init_app(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
+
+
+def send_email(to, subject, body):
+    """Sends a plain-text email via Resend's HTTPS API."""
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {app.config['RESEND_API_KEY']}"},
+        json={
+            "from": app.config['MAIL_DEFAULT_SENDER'],
+            "to": [to],
+            "subject": subject,
+            "text": body,
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 @app.errorhandler(413)
@@ -92,25 +107,14 @@ def file_too_large(e):
 def send_verification_email(user, next_page=None):
     token = serializer.dumps(user.email, salt='email-verify')
     link = url_for('verify_email', token=token, next=next_page, _external=True)
-    msg = Message(
-        'Verify your ORLE account',
-        recipients=[user.email],
-        sender=app.config['MAIL_USERNAME']
-    )
-    msg.body = f'Welcome to ORLE. Click the link below to verify your email:\n\n{link}\n\nThis link expires in 1 hour.'
-    mail.send(msg)
-
+    body = f'Welcome to ORLE. Click the link below to verify your email:\n\n{link}\n\nThis link expires in 1 hour.'
+    send_email(user.email, 'Verify your ORLE account', body)
 
 def send_vendor_verification_email(vendor):
     token = serializer.dumps(vendor.email, salt='vendor-email-verify')
     link = url_for('verify_vendor_email', token=token, _external=True)
-    msg = Message(
-        'Verify your ORLE vendor account',
-        recipients=[vendor.email],
-        sender=app.config['MAIL_USERNAME']
-    )
-    msg.body = f'Welcome to ORLE. Click the link below to verify your vendor account:\n\n{link}\n\nThis link expires in 1 hour.'
-    mail.send(msg)
+    body = f'Welcome to ORLE. Click the link below to verify your vendor account:\n\n{link}\n\nThis link expires in 1 hour.'
+    send_email(vendor.email, 'Verify your ORLE vendor account', body)
 
 
 def send_return_email(ret, event):
@@ -130,15 +134,12 @@ def send_return_email(ret, event):
             f"If you have questions about this decision, please contact support."
         ),
     }
-
-    msg = Message(
+    send_email(
+        ret.customer.email,
         subjects.get(event, 'Return update'),
-        recipients=[ret.customer.email],
-        sender=app.config['MAIL_USERNAME']
+        bodies.get(event, f"Your return status has changed to: {event}")
     )
-    msg.body = bodies.get(event, f"Your return status has changed to: {event}")
-    mail.send(msg)
-
+    
 
 def send_order_email(order, event):
     subjects = {
@@ -153,14 +154,11 @@ def send_order_email(order, event):
         'delivered': f"Order #{order.id} has been marked as delivered. We hope you love it.",
         'cancelled': f"Order #{order.id} has been cancelled. If a payment was made, it will be refunded within 5-7 business days."
     }
-
-    msg = Message(
+    send_email(
+        order.user.email,
         subjects.get(event, 'Order update'),
-        recipients=[order.user.email],
-        sender=app.config['MAIL_USERNAME']
+        bodies.get(event, f"Your order status has changed to: {event}")
     )
-    msg.body = bodies.get(event, f"Your order status has changed to: {event}")
-    mail.send(msg)
     
     
 oauth = OAuth(app)
@@ -1195,13 +1193,8 @@ def forgot_password():
     if user and user.password_hash:
         token = serializer.dumps(user.email, salt='password-reset')
         link = url_for('reset_password', token=token, _external=True)
-        msg = Message(
-            'Reset your ORLE password',
-            recipients=[user.email],
-            sender=app.config['MAIL_USERNAME']
-        )
-        msg.body = f'Click the link below to reset your password:\n\n{link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.'
-        mail.send(msg)
+        body = f'Click the link below to reset your password:\n\n{link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.'
+        send_email(user.email, 'Reset your ORLE password', body)
 
     flash("If an account exists with that email, a reset link has been sent.", "info")
     return redirect(url_for('login'))
@@ -1262,16 +1255,12 @@ def vendor_forgot_password():
     if vendor:
         token = serializer.dumps(vendor.email, salt='vendor-password-reset')
         link = url_for('vendor_reset_password', token=token, _external=True)
-        msg = Message(
-            'Reset your ORLE vendor password',
-            recipients=[vendor.email],
-            sender=app.config['MAIL_USERNAME']
-        )
-        msg.body = f'Click the link below to reset your vendor password:\n\n{link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.'
-        mail.send(msg)
+        body = f'Click the link below to reset your vendor password:\n\n{link}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.'
+        send_email(vendor.email, 'Reset your ORLE vendor password', body)
 
     flash("If a vendor account exists with that email, a reset link has been sent.", "info")
     return redirect(url_for('vendor_login'))
+
 
 
 @app.route('/vendor/reset-password/<token>', methods=['GET', 'POST'])

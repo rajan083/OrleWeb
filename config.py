@@ -19,12 +19,9 @@ class Config:
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME')
+    # CHANGED — Resend (HTTPS API) replaces Flask-Mail/Gmail SMTP, which Railway blocks on free/hobby plans
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
 
     RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
     RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
@@ -49,14 +46,12 @@ class Config:
         required_in_production = {
             'SECRET_KEY': Config.SECRET_KEY,
             'JWT_SECRET_KEY': Config.JWT_SECRET_KEY,
-            'MAIL_USERNAME': Config.MAIL_USERNAME,
-            'MAIL_PASSWORD': Config.MAIL_PASSWORD,
+            'RESEND_API_KEY': Config.RESEND_API_KEY,  # CHANGED — replaces MAIL_USERNAME/MAIL_PASSWORD
             'RAZORPAY_KEY_ID': Config.RAZORPAY_KEY_ID,
             'RAZORPAY_KEY_SECRET': Config.RAZORPAY_KEY_SECRET,
             'RAZORPAY_WEBHOOK_SECRET': Config.RAZORPAY_WEBHOOK_SECRET,
             'SENTRY_DSN': Config.SENTRY_DSN,
             'REDIS_URL': Config.REDIS_URL,
-
         }
 
         if Config.IS_PRODUCTION:
