@@ -240,6 +240,10 @@ class Sale(db.Model):
     amount = db.Column(db.Integer, nullable=False)  # total sale value, whole rupees
     sale_date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_paid = db.Column(db.Boolean, nullable=False, default=False)
+    paid_at = db.Column(db.DateTime, nullable=True)
+    paid_by = db.Column(db.String(120), nullable=True)  # e.g. admin's email/username who marked it paid
+
 
     product = db.relationship('Product')
 

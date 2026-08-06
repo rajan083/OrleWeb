@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Sales & Payouts · ORLE Admin{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+
+    <div class="admin-header">
+        <h1>Sales &amp; Payouts</h1>
+        <p>Track vendor sales and mark them as paid once settled.</p>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-head">
+            <h2>All Sales</h2>
+            <span class="text-link">{{ pagination.total }} total · ₹{{ "%.2f"|format(total_unpaid) }} unpaid</span>
+        </div>
+
+        <form method="GET" action="{{ url_for('admin_sales') }}" class="inline-sort-form" style="margin-bottom: 16px;">
+            <input type="text" name="q" placeholder="Search by vendor name or email" value="{{ search_q }}">
+            <select name="paid">
+                <option value="" {% if not paid_filter %}selected{% endif %}>All</option>
+                <option value="yes" {% if paid_filter == 'yes' %}selected{% endif %}>Paid</option>
+                <option value="no" {% if paid_filter == 'no' %}selected{% endif %}>Unpaid</option>
+            </select>
+            <button type="submit" class="filter-apply-btn">Search</button>
+            {% if search_q or paid_filter %}
+                <a href="{{ url_for('admin_sales') }}" class="text-link">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if sales %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Sale ID</th>
+                        <th>Vendor</th>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Amount</th>
+                        <th>Sale Date</th>
+                        <th>Status</th>
+                        <th class="num"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                        <tr>
+                            <td>{{ sale.id }}</td>
+                            <td>{{ sale.vendor.business_name if sale.vendor else '—' }}</td>
+                            <td>{{ sale.product.name if sale.product else '—' }}</td>
+                            <td>{{ sale.quantity }}</td>
+                            <td>₹{{ sale.amount }}</td>
+                            <td>{{ sale.sale_date.strftime('%d %b %Y') if sale.sale_date else '—' }}</td>
+                            <td>
+                                <span class="order-status {{ 'status-placed' if sale.is_paid else 'status-pending_payment' }}">
+                                    {{ 'Paid' if sale.is_paid else 'Unpaid' }}
+                                </span>
+                                {% if sale.is_paid and sale.paid_at %}
+                                    <div class="onboarding-sub">on {{ sale.paid_at.strftime('%d %b %Y') }}{% if sale.paid_by %} by {{ sale.paid_by }}{% endif %}</div>
+                                {% endif %}
+                            </td>
+                            <td class="num">
+                                <form action="{{ url_for('toggle_sale_paid', sale_id=sale.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="text-link" style="border:none; background:none; cursor:pointer;">
+                                        {{ 'Mark as Unpaid' if sale.is_paid else 'Mark as Paid' }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="admin-empty-state">No sales found{{ ' for "' + search_q + '"' if search_q else '' }}.</div>
+        {% endif %}
+
+        {% if pagination.pages > 1 %}
+        <div class="admin-pager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:20px;">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_sales', page=pagination.prev_num, q=search_q, paid=paid_filter) }}" class="btn-tan-sm">← Prev</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">← Prev</span>
+            {% endif %}
+
+            <span class="onboarding-sub">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_sales', page=pagination.next_num, q=search_q, paid=paid_filter) }}" class="btn-tan-sm">Next →</a>
+            {% else %}
+                <span class="btn-tan-sm" style="opacity:0.4; pointer-events:none;">Next →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

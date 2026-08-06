@@ -1,6 +1,6 @@
 import os
 import uuid
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import Flask, request, render_template, redirect, url_for, session, flash, abort
 from sqlalchemy import or_
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_jwt_extended import JWTManager
@@ -2453,6 +2453,76 @@ def admin_delete_review(review_id):
     db.session.commit()
     flash("Review removed.", "info")
     return redirect(url_for('admin_reviews'))
+
+
+#===================================== Admin : Sales ====================================
+
+
+@app.route('/admin/sales')
+@admin_required
+def admin_sales():
+    search_q = request.args.get('q', '').strip()
+    paid_filter = request.args.get('paid')
+    page = request.args.get('page', 1, type=int)
+ 
+    query = (
+        Sale.query
+        .outerjoin(Vendor, Sale.vendor_id == Vendor.id)
+        .outerjoin(Product, Sale.product_id == Product.id)
+    )
+ 
+    if search_q:
+        query = query.filter(
+            or_(
+                Vendor.business_name.ilike(f"%{search_q}%"),
+                Vendor.email.ilike(f"%{search_q}%")
+            )
+        )
+ 
+    if paid_filter == 'yes':
+        query = query.filter(Sale.is_paid == True)
+    elif paid_filter == 'no':
+        query = query.filter(Sale.is_paid == False)
+ 
+    pagination = query.order_by(Sale.sale_date.desc()).paginate(page=page, per_page=20, error_out=False)
+ 
+    total_unpaid = (
+        db.session.query(db.func.sum(Sale.amount))
+        .filter(Sale.is_paid == False)
+        .scalar() or 0
+    )
+ 
+    return render_template(
+        'admin_sales.html',
+        sales=pagination.items,
+        pagination=pagination,
+        search_q=search_q,
+        paid_filter=paid_filter,
+        total_unpaid=total_unpaid
+    )
+
+
+@app.route('/admin/sale/<int:sale_id>/toggle-paid', methods=['POST'])
+@login_required
+def toggle_sale_paid(sale_id):
+    # --- replace this with your existing admin-check pattern ---
+    if not getattr(current_user, 'is_admin', False):
+        abort(403)
+    # ------------------------------------------------------------
+ 
+    sale = Sale.query.get_or_404(sale_id)
+ 
+    sale.is_paid = not sale.is_paid
+    sale.paid_at = datetime.utcnow() if sale.is_paid else None
+    sale.paid_by = current_user.email if sale.is_paid else None
+ 
+    db.session.commit()
+ 
+    flash(
+        f"Sale #{sale.id} marked as {'PAID' if sale.is_paid else 'UNPAID'}.",
+        'success'
+    )
+    return redirect(url_for('admin_sales'))  # replace with whatever your sales list view is named
 
 
 
