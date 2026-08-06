@@ -27,7 +27,7 @@
                         <th>Customer</th>
                         <th>Reason</th>
                         <th>Requested</th>
-                        <th>Action</th>
+                        <th style="text-align:right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -38,12 +38,18 @@
                             <td>{{ ret.reason }}</td>
                             <td>{{ ret.requested_at.strftime('%d %b %Y') }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('admin_approve_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Approve this return and issue a refund?');">
-                                    <button type="submit" class="btn-tan-sm">Approve</button>
-                                </form>
-                                <form method="POST" action="{{ url_for('admin_reject_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Reject this return request?');">
-                                    <button type="submit" class="btn-tan-sm btn-tan-sm-danger">Reject</button>
-                                </form>
+                                <div class="return-action-group">
+                                    <form method="POST" action="{{ url_for('admin_approve_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Approve this return and issue a refund?');">
+                                        <button type="submit" class="icon-action-btn icon-action-approve" title="Approve return">
+                                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin_reject_return', return_id=ret.id) }}" class="admin-inline-form" onsubmit="return confirm('Reject this return request?');">
+                                        <button type="submit" class="icon-action-btn icon-action-reject" title="Reject return">
+                                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -55,4 +61,49 @@
     </div>
 
 </div>
+
+<style>
+    .return-action-group {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .icon-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.1s ease;
+        padding: 0;
+    }
+
+    .icon-action-btn:active {
+        transform: scale(0.92);
+    }
+
+    .icon-action-approve {
+        color: #1e7d34;
+        background-color: rgba(30, 125, 52, 0.1);
+        border-color: rgba(30, 125, 52, 0.25);
+    }
+
+    .icon-action-approve:hover {
+        background-color: rgba(30, 125, 52, 0.18);
+    }
+
+    .icon-action-reject {
+        color: #b3261e;
+        background-color: rgba(179, 38, 30, 0.08);
+        border-color: rgba(179, 38, 30, 0.22);
+    }
+
+    .icon-action-reject:hover {
+        background-color: rgba(179, 38, 30, 0.16);
+    }
+</style>
 {% endblock %}

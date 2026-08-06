@@ -3161,3 +3161,25 @@ footer {
         min-width: 0;
     }
 }
+
+    .return-status-badge {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        padding: 4px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .return-status-requested {
+        color: #8a6d00;
+        background-color: rgba(212, 168, 0, 0.14);
+    }
+    .return-status-refunded {
+        color: #1e7d34;
+        background-color: rgba(30, 125, 52, 0.12);
+    }
+    .return-status-rejected {
+        color: #b3261e;
+        background-color: rgba(179, 38, 30, 0.1);
+    }

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}My Returns{% endblock %}
+{% block content %}
+<div class="onboarding">
+    <h1>My Returns</h1>
+    <p class="onboarding-sub">Track the status of your return requests.</p>
+
+    {% if returns %}
+        {% for ret in returns %}
+            <div class="profile-card">
+                <div class="profile-card-head">
+                    <h2>
+                        <a href="{{ url_for('order_detail', order_id=ret.order_id) }}">Order #{{ ret.order_id }}</a>
+                    </h2>
+                    <span class="return-status-badge return-status-{{ ret.status }}">
+                        {% if ret.status == 'requested' %}Pending Review
+                        {% elif ret.status == 'refunded' %}Approved &amp; Refunded
+                        {% elif ret.status == 'rejected' %}Rejected
+                        {% else %}{{ ret.status|title }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="option-list">
+                    <div class="option-row"><span>Requested</span><strong>{{ ret.requested_at.strftime('%d %b %Y') }}</strong></div>
+                    {% if ret.order_item %}
+                        <div class="option-row"><span>Item</span><strong>{{ ret.order_item.product_name }}</strong></div>
+                    {% else %}
+                        <div class="option-row"><span>Item</span><strong>Whole order</strong></div>
+                    {% endif %}
+                    <div class="option-row"><span>Reason</span><strong>{{ ret.reason }}</strong></div>
+                    {% if ret.resolved_at %}
+                        <div class="option-row"><span>Resolved</span><strong>{{ ret.resolved_at.strftime('%d %b %Y') }}</strong></div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="admin-empty-state">You haven't requested any returns.</div>
+    {% endif %}
+</div>
+
+<style>
+    .return-status-badge {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        padding: 4px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .return-status-requested {
+        color: #8a6d00;
+        background-color: rgba(212, 168, 0, 0.14);
+    }
+    .return-status-refunded {
+        color: #1e7d34;
+        background-color: rgba(30, 125, 52, 0.12);
+    }
+    .return-status-rejected {
+        color: #b3261e;
+        background-color: rgba(179, 38, 30, 0.1);
+    }
+</style>
+{% endblock %}

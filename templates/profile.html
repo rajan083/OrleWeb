@@ -33,6 +33,10 @@
             <strong>{{ address_count }}</strong>
             <span>Address{{ 'es' if address_count != 1 else '' }}</span>
         </a>
+        <a href="{{ url_for('returns') }}" class="profile-stat">
+            <strong>{{ return_count }}</strong>
+            <span>Return{{ 's' if return_count != 1 else '' }}</span>
+        </a>
     </div>
 
     <div class="profile-card">
@@ -85,6 +89,10 @@
             </a>
             <a href="{{ url_for('addresses') }}" class="option-row profile-link-row">
                 <span>Saved Addresses</span>
+                <span class="profile-link-arrow">→</span>
+            </a>
+            <a href="{{ url_for('returns') }}" class="option-row profile-link-row">
+                <span>My Returns</span>
                 <span class="profile-link-arrow">→</span>
             </a>
         </div>

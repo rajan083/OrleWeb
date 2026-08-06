@@ -101,6 +101,33 @@ def send_vendor_verification_email(vendor):
     mail.send(msg)
 
 
+def send_return_email(ret, event):
+    subjects = {
+        'refunded': 'Your ORLE return has been approved',
+        'rejected': 'Your ORLE return request was not approved',
+    }
+    bodies = {
+        'refunded': (
+            f"Good news — your return for Order #{ret.order_id} has been approved.\n\n"
+            f"Reason: {ret.reason}\n\n"
+            f"A refund has been initiated and will reflect in 5-7 business days."
+        ),
+        'rejected': (
+            f"Your return request for Order #{ret.order_id} was not approved.\n\n"
+            f"Reason given: {ret.reason}\n\n"
+            f"If you have questions about this decision, please contact support."
+        ),
+    }
+
+    msg = Message(
+        subjects.get(event, 'Return update'),
+        recipients=[ret.customer.email],
+        sender=app.config['MAIL_USERNAME']
+    )
+    msg.body = bodies.get(event, f"Your return status has changed to: {event}")
+    mail.send(msg)
+
+
 def send_order_email(order, event):
     subjects = {
         'placed': 'Your ORLE order has been placed',
@@ -422,15 +449,18 @@ def profile():
     order_count = Order.query.filter_by(user_id=current_user.id).count()
     wishlist_count = Wishlist.query.filter_by(user_id=current_user.id).count()
     address_count = Address.query.filter_by(user_id=current_user.id).count()
-
+    return_count = Return.query.filter_by(customer_id=current_user.id).count()
+ 
     return render_template(
         'profile.html',
         user=current_user,
         profile=current_user.profile,
         order_count=order_count,
         wishlist_count=wishlist_count,
-        address_count=address_count
+        address_count=address_count,
+        return_count=return_count
     )
+
 
 
 @app.route('/profile/edit', methods=['GET', 'POST'])
@@ -452,6 +482,26 @@ def edit_profile():
 
     flash("Your profile has been updated.", "success")
     return redirect(url_for('profile'))
+
+
+#===============================================Return===================================================================
+
+
+@app.route('/returns')
+@login_required
+def returns():
+    if getattr(current_user, 'is_vendor', False):
+        flash("This page is for customers only.", "error")
+        return redirect(url_for('vendor_dashboard'))
+ 
+    user_returns = (
+        Return.query
+        .filter_by(customer_id=current_user.id)
+        .order_by(Return.requested_at.desc())
+        .all()
+    )
+    return render_template('returns.html', returns=user_returns)
+
 
 #===============================================Addresses===================================================================
 
@@ -913,10 +963,11 @@ def order_detail(order_id):
         flash("You don't have permission to view this order.", "error")
         return redirect(url_for('orders'))
 
-    pending_return = Return.query.filter_by(order_id=order.id, status='requested').first() is not None  
+    # most recent return for this order, regardless of status — drives both
+    # the status badge and whether the "Request a Return" form is shown
+    return_request = (Return.query.filter_by(order_id=order.id).order_by(Return.requested_at.desc()).first())
 
-    return render_template('order_detail.html', order=order, pending_return=pending_return)  
-
+    return render_template('order_detail.html', order=order, return_request=return_request)
 
 #===============================================Order Cancellation (Customer)===================================================================
 
@@ -2394,6 +2445,7 @@ def admin_approve_return(return_id):
     db.session.commit()
 
     if success:
+        send_return_email(ret, 'refunded')
         flash(f"Return #{ret.id} approved. {message}", "success")
     else:
         # ret.resolved_by_id was set but status stays 'requested' since refund failed — admin can retry
@@ -2414,6 +2466,8 @@ def admin_reject_return(return_id):
     ret.resolved_at = datetime.utcnow()
     ret.resolved_by_id = current_user.id
     db.session.commit()
+
+    send_return_email(ret, 'rejected')
     flash(f"Return #{ret.id} rejected.", "info")
     return redirect(url_for('admin_returns'))
 
@@ -2666,4 +2720,4 @@ def create_admin(email, name, password):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True)
