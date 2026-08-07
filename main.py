@@ -28,6 +28,7 @@ import cloudinary
 import cloudinary.uploader
 import requests
 from werkzeug.middleware.proxy_fix import ProxyFix
+import re
 
 
 app = Flask(__name__)
@@ -1522,7 +1523,8 @@ def product_image(image_url):
         return url_for('static', filename='img/placeholder.png')
     if image_url.startswith('http://') or image_url.startswith('https://'):
         if 'res.cloudinary.com' in image_url and '/upload/' in image_url:
-            image_url = image_url.replace('/upload/', '/upload/f_auto,q_auto/', 1)
+            image_url = re.sub(r'\.(jpg|jpeg|png)$', '.webp', image_url, flags=re.IGNORECASE)
+            image_url = image_url.replace('/upload/', '/upload/q_auto/', 1)
         return image_url
     return url_for('static', filename=image_url)
 
