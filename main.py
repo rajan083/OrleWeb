@@ -1518,6 +1518,8 @@ def product_image(image_url):
     if not image_url:
         return url_for('static', filename='img/placeholder.png')
     if image_url.startswith('http://') or image_url.startswith('https://'):
+        if 'res.cloudinary.com' in image_url and '/upload/' in image_url:
+            image_url = image_url.replace('/upload/', '/upload/f_auto,q_auto/', 1)
         return image_url
     return url_for('static', filename=image_url)
 
