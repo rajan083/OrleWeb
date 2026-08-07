@@ -27,11 +27,14 @@ import io
 import cloudinary
 import cloudinary.uploader
 import requests
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 app = Flask(__name__)
 Config.validate()
 app.config.from_object(Config)
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 cloudinary.config(
     cloud_name=app.config['CLOUDINARY_CLOUD_NAME'],
