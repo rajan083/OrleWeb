@@ -244,7 +244,7 @@ class Sale(db.Model):
     paid_at = db.Column(db.DateTime, nullable=True)
     paid_by = db.Column(db.String(120), nullable=True)  # e.g. admin's email/username who marked it paid
 
-
+    vendor = db.relationship('Vendor')
     product = db.relationship('Product')
 
     def to_dict(self):

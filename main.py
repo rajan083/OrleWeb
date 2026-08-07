@@ -1869,6 +1869,20 @@ def razorpay_webhook():
     return {"status": "ok"}, 200
 
 
+def create_sales_from_order(order):
+    """Creates one Sale record per order item, so vendor payouts track real purchases automatically."""
+    for oi in order.items:
+        if not oi.product or not oi.product.vendor_id:
+            continue
+        db.session.add(Sale(
+            vendor_id=oi.product.vendor_id,
+            product_id=oi.product_id,
+            quantity=oi.quantity,
+            amount=oi.unit_price * oi.quantity,
+            sale_date=order.created_at.date()
+        ))
+
+
 def handle_payment_captured(event):
     payment_entity = event['payload']['payment']['entity']
     razorpay_order_id = payment_entity.get('order_id')
@@ -1898,6 +1912,8 @@ def handle_payment_captured(event):
         elif not product.requires_size:
             product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
 
+    create_sales_from_order(order)    
+    
     if order.coupon_code:
         coupon = Coupon.query.filter_by(code=order.coupon_code).first()
         if coupon:
@@ -2108,6 +2124,8 @@ def payment_verify():
                 size_row.stock_quantity = max(size_row.stock_quantity - oi.quantity, 0)
         elif not product.requires_size:
             product.stock_quantity = max(product.stock_quantity - oi.quantity, 0)
+
+    create_sales_from_order(order)
 
     if order.coupon_code:
         coupon = Coupon.query.filter_by(code=order.coupon_code).first()
