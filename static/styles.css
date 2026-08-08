@@ -3524,3 +3524,37 @@ footer {
         display: inline;
     }
 }
+
+@media (max-width: 900px) {
+    nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .search-wrapper {
+        order: 2;
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .menu-toggle {
+        order: 3;
+    }
+
+    .search-wrapper.active .search-form {
+        width: 100%;
+    }
+}
+@media (min-width: 901px) {
+    nav {
+        justify-content: flex-start; /* override space-between so children don't spread out */
+    }
+
+    .search-wrapper {
+        margin-left: auto;   /* pushes search + everything after it to the right */
+        margin-right: 28px;  /* gap between search icon and "Dashboard" */
+    }
+}

@@ -13,6 +13,18 @@
 <nav>
     <a href="{{ url_for('home') }}" class="wordmark-sm">ORLE</a>
 
+    <div class="search-wrapper" id="searchWrapper">
+        <button type="button" class="search-toggle" id="searchToggle" aria-label="Search">
+            <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
+                <path d="M20 20L16.5 16.5" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <form action="{{ url_for('search') }}" method="GET" class="search-form" id="searchForm">
+            <input type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" id="searchInput">
+        </form>
+    </div>
+
     <button class="menu-toggle" id="menu-toggle" aria-label="Menu">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -20,24 +32,12 @@
     </button>
     <div class="nav-container" id="nav-container">
 
+       <div class="nav-icons">
+
         <div class="nav-links">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
             <a href="{{ url_for('catalogue') }}">The Edit</a>
         </div>
-
-       <div class="nav-icons">
-
-            <div class="search-wrapper" id="searchWrapper">
-                <button type="button" class="search-toggle" id="searchToggle" aria-label="Search">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
-                        <path d="M20 20L16.5 16.5" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                </button>
-                <form action="{{ url_for('search') }}" method="GET" class="search-form" id="searchForm">
-                    <input type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" id="searchInput">
-                </form>
-            </div>
 
             {% if current_user.is_authenticated %}
                 {% if current_user.is_vendor %}
