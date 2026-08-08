@@ -38,7 +38,7 @@ a {
 
 nav {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     padding: 20px 48px;
     background: var(--cream);
@@ -397,10 +397,12 @@ button:hover, .btn-save:hover {
 
 .body-type-card input[type="radio"] { accent-color: var(--olive); }
 
-.body-type-card img {
+.body-type-card img,
+.body-type-card svg {
     width: 100%;
     height: 90px;
     object-fit: contain;
+    display: block;
 }
 
 .form-error {
@@ -1510,17 +1512,31 @@ footer {
 .account-menu.open .account-dropdown { display: block; }
 
 .account-dropdown a {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 20px;
     font-size: 13px;
     color: var(--charcoal);
     border-bottom: 1px solid var(--off-white);
 }
 
+.account-dropdown a svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--grey);
+    transition: color 0.15s;
+}
+
+.account-dropdown a:hover svg { color: var(--olive); }
+
 .account-dropdown a:last-child {
     border-bottom: none;
     color: var(--error-text);
 }
+
+.account-dropdown a:last-child svg { color: var(--error-text); opacity: 0.75; }
 
 .account-dropdown a:hover {
     background: var(--off-white);
@@ -1531,6 +1547,8 @@ footer {
     color: var(--error-text);
     background: var(--error-bg);
 }
+
+.account-dropdown a:last-child:hover svg { opacity: 1; }
 
 /* ============ ORDERS LIST ============ */
 
@@ -1856,16 +1874,14 @@ footer {
     font-size: 11px;
 }
 
-.prefs-modal .body-type-card img { height: 70px; }
+.prefs-modal .body-type-card img,
+.prefs-modal .body-type-card svg {
+    height: 70px;
+}
 
 .prefs-modal .swatch {
     width: 22px;
     height: 22px;
-}
-
-.prefs-modal .body-type-card img,
-.prefs-modal .body-type-card svg {
-    height: 70px;
 }
 
 .prefs-modal .swatch-row { gap: 12px; }
@@ -2533,49 +2549,7 @@ footer {
     opacity: 1;
 }
 
-.search-wrapper {
-    display: flex;
-    align-items: center;
-    position: relative;
-}
-
-.search-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    color: #1a1a1a;
-}
-
-.search-toggle svg {
-    width: 20px;
-    height: 20px;
-    stroke: #1a1a1a;
-}
-
-.search-form {
-    width: 0;
-    overflow: hidden;
-    transition: width 0.25s ease, margin-left 0.25s ease;
-    margin-left: 0;
-}
-
-.search-wrapper.active .search-form {
-    width: 200px;
-    margin-left: 8px;
-}
-
-.search-form input {
-    width: 100%;
-    border: none;
-    border-bottom: 1px solid currentColor;
-    background: transparent;
-    padding: 4px 2px;
-    font-family: inherit;
-    outline: none;
-}
+/* ============ SEARCH RESULTS PAGE ============ */
 
 .search-results-page {
     max-width: 1200px;
@@ -2625,12 +2599,6 @@ footer {
     font-size: 13px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-}
-
-@media (max-width: 640px) {
-    .search-wrapper.active .search-form {
-        width: 140px;
-    }
 }
 
 .payment-summary {
@@ -3079,8 +3047,7 @@ footer {
     padding-right: 0;
 }
 
-/* Admin Products page additions */
-
+/* ============ ADMIN PRODUCTS PAGE ============ */
 /* Matches the palette already used in admin_dashboard.html:
    olive #5C6B4A / #3E4A32, dark #343434 / #232320,
    tan/stone #B8B29F / #C9C7BF, cream grid #EDEAE2 */
@@ -3167,37 +3134,39 @@ footer {
     }
 }
 
-    .return-status-badge {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        padding: 4px 10px;
-        border-radius: 999px;
-        white-space: nowrap;
-    }
-    .return-status-requested {
-        color: #8a6d00;
-        background-color: rgba(212, 168, 0, 0.14);
-    }
-    .return-status-refunded {
-        color: #1e7d34;
-        background-color: rgba(30, 125, 52, 0.12);
-    }
-    .return-status-rejected {
-        color: #b3261e;
-        background-color: rgba(179, 38, 30, 0.1);
-    }
+.return-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.return-status-requested {
+    color: #8a6d00;
+    background-color: rgba(212, 168, 0, 0.14);
+}
+.return-status-refunded {
+    color: #1e7d34;
+    background-color: rgba(30, 125, 52, 0.12);
+}
+.return-status-rejected {
+    color: #b3261e;
+    background-color: rgba(179, 38, 30, 0.1);
+}
 
-    .payment-method-hint {
-        display: flex;
-        align-items: center;
-        font-size: 12px;
-        color: var(--olive, #6b6b4f);
-        margin: 4px 0 16px;
-    }
+.payment-method-hint {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: var(--olive, #6b6b4f);
+    margin: 4px 0 16px;
+}
 
-    @media (max-width: 900px) {
+/* ============ MOBILE NAV: account menu / search full-width rows ============ */
+
+@media (max-width: 900px) {
     .account-menu,
     .search-wrapper {
         width: 100%;
@@ -3249,17 +3218,6 @@ footer {
         border-bottom: 1px solid rgba(0,0,0,.05);
     }
 
-    .search-wrapper {
-        padding: 18px 24px;
-        border-bottom: 1px solid rgba(0,0,0,.05);
-    }
-    .search-toggle { padding: 0; }
-    .search-wrapper.active .search-form {
-        width: 100%;
-        margin-left: 0;
-        margin-top: 10px;
-    }
-
     /* Badge now positions off the icon wrapper, not the full-width link */
     .icon-badge-wrap {
         position: relative;
@@ -3308,14 +3266,6 @@ footer {
     .product-grid {
         gap: 8px;
     }
-}
-
-.body-type-card img,
-.body-type-card svg {
-    width: 100%;
-    height: 90px;
-    object-fit: contain;
-    display: block;
 }
 
 /* ============ LOGIN / REGISTER — SPLIT SCREEN ============ */
@@ -3404,7 +3354,6 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-
 }
 
 .login-heading {
@@ -3484,27 +3433,6 @@ footer {
     .login-heading { font-size: 24px; }
 }
 
-/* ============ DROPDOWN ICONS ============ */
-
-.account-dropdown a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.account-dropdown a svg {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    color: var(--grey);
-    transition: color 0.15s;
-}
-
-.account-dropdown a:hover svg { color: var(--olive); }
-
-.account-dropdown a:last-child svg { color: var(--error-text); opacity: 0.75; }
-.account-dropdown a:last-child:hover svg { opacity: 1; }
-
 /* ============ MOBILE ICON LABELS (wishlist / bag) ============ */
 
 .nav-icon-label {
@@ -3525,36 +3453,111 @@ footer {
     }
 }
 
+/* ============ SEARCH BAR (single source of truth) ============ */
+/* Markup: .search-wrapper > form.search-form#searchForm > input#searchInput + button.search-toggle#searchToggle */
+
+.search-wrapper {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.search-form {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+.search-form #searchInput {
+    width: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    flex-shrink: 1;
+    transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+}
+
+.search-wrapper.active .search-form #searchInput {
+    width: 200px;
+    padding: 6px 4px;
+    opacity: 1;
+    border-bottom: 1px solid var(--grey, #999);
+}
+
+.search-toggle {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--black);
+    flex-shrink: 0;
+}
+
+.search-toggle svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+}
+
+/* Desktop: push the search bar (and everything after it) to the right,
+   right before Dashboard / The Edit / Sign In, vertically centered with them */
+@media (min-width: 901px) {
+    .search-wrapper {
+        margin-left: auto;
+        margin-right: 28px;
+    }
+}
+
+/* Mobile: search sits in its own full-width row alongside the hamburger */
 @media (max-width: 900px) {
     nav {
-        display: flex;
-        align-items: center;
         justify-content: space-between;
-        gap: 10px;
     }
 
     .search-wrapper {
         order: 2;
         flex: 1;
-        display: flex;
         justify-content: flex-end;
+        padding: 18px 24px;
+        border-bottom: 1px solid rgba(0,0,0,.05);
     }
 
     .menu-toggle {
         order: 3;
     }
 
-    .search-wrapper.active .search-form {
+    .search-toggle {
+        padding: 0;
+    }
+
+    .search-wrapper.active .search-form #searchInput {
         width: 100%;
     }
 }
-@media (min-width: 901px) {
-    nav {
-        justify-content: flex-start; /* override space-between so children don't spread out */
-    }
 
-    .search-wrapper {
-        margin-left: auto;   /* pushes search + everything after it to the right */
-        margin-right: 28px;  /* gap between search icon and "Dashboard" */
-    }
+#searchWrapper #searchForm {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: auto !important;
+    overflow: visible !important;
+}
+
+#searchWrapper #searchToggle {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    display: flex !important;
+}
+
+#searchWrapper #searchInput {
+    flex: 0 1 auto !important;
+}
+
+.search-bar-icon-toggle {
+    display: inline-flex;
 }

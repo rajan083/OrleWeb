@@ -14,14 +14,16 @@
     <a href="{{ url_for('home') }}" class="wordmark-sm">ORLE</a>
 
     <div class="search-wrapper" id="searchWrapper">
-        <button type="button" class="search-toggle" id="searchToggle" aria-label="Search">
-            <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
-                <path d="M20 20L16.5 16.5" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-        </button>
         <form action="{{ url_for('search') }}" method="GET" class="search-form" id="searchForm">
-            <input type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" id="searchInput">
+            <div class="search-bar-icon-toggle">
+                <input type="text" name="q" placeholder="Search products..." value="{{ request.args.get('q', '') }}" id="searchInput">
+                <button type="submit" class="search-toggle" id="searchToggle" aria-label="Search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="11" cy="11" r="7" stroke-width="1.5"/>
+                        <path d="M20 20L16.5 16.5" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+            </div>
+            </button>
         </form>
     </div>
 
@@ -302,9 +304,8 @@
         }
     });
 })();
-</script>
 
-<script>
+
   document.querySelectorAll('.flash-message').forEach(function (el) {
     var msgLength = el.textContent.trim().length;
     var duration = Math.min(5000, Math.max(3000, 3000 + msgLength * 25));
@@ -319,9 +320,8 @@
       setTimeout(function () { el.remove(); }, 400);
     });
   });
-</script>
 
-<script>
+
 const menu = document.getElementById("menu-toggle");
 const nav = document.getElementById("nav-container");
 
@@ -329,9 +329,7 @@ menu.addEventListener("click", () => {
     nav.classList.toggle("active");
     menu.classList.toggle("active");
 });
-</script>
 
-<script>
 const accountToggle = document.getElementById("accountMenuToggle");
 if (accountToggle) {
     const accountMenu = accountToggle.closest(".account-menu");
@@ -347,19 +345,19 @@ if (accountToggle) {
         }
     });
 }
-</script>
-<script>
+
 const searchToggle = document.getElementById("searchToggle");
 const searchWrapper = document.getElementById("searchWrapper");
 const searchInput = document.getElementById("searchInput");
 
 if (searchToggle) {
     searchToggle.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const isActive = searchWrapper.classList.toggle("active");
-        if (isActive) {
+        if (!searchWrapper.classList.contains("active")) {
+            e.preventDefault(); // first click just opens the bar, doesn't submit yet
+            searchWrapper.classList.add("active");
             searchInput.focus();
         }
+        // if already active, do nothing here — let the button submit the form normally
     });
 
     document.addEventListener("click", (e) => {
@@ -368,13 +366,12 @@ if (searchToggle) {
         }
     });
 
-    // Keep it open if there's already a query in the box (e.g. landed on search_results.html)
     if (searchInput.value.trim()) {
         searchWrapper.classList.add("active");
     }
 }
-</script>
-<script>
+
+
 document.addEventListener('DOMContentLoaded', function () {
     const token = "{{ csrf_token() }}";
     document.querySelectorAll('form').forEach(function (form) {
