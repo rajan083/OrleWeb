@@ -4,24 +4,45 @@
 
 {% block content %}
 
-<div class="form-wrapper">
-    <div class="form-card">
-        <p>NEW HERE? <a href="{{ url_for('register', next=request.args.get('next')) }}">SIGN UP</a></p>
+<div class="login-split">
 
-        {% if error %}
-            <p class="form-error">{{ error }}</p>
+    <div class="login-image-pane">
+        <div class="login-image-ken-burns" style="background-image: url('{{ hero_image_url }}');"></div>
+        <div class="login-image-scrim"></div>
+        {% if hero_product_name %}
+        <div class="login-image-caption">
+            <span class="login-image-eyebrow">From the edit</span>
+            <span class="login-image-product">{{ hero_product_name }}</span>
+        </div>
         {% endif %}
-
-        <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST">
-            <input type="email" name="email" placeholder="name@domain.com" id="Email" required autocomplete="email">
-            <input type="password" name="password" placeholder="•••••••••" id="Password" required>
-            <div class="form-links">
-                <a href="{{ url_for('forgot_password') }}">FORGOT PASSWORD</a>
-                <a href="{{ url_for('login_google', next=request.args.get('next')) }}">SIGN IN GOOGLE</a>
-            </div>
-            <button type="submit">SUBMIT</button>
-        </form>
     </div>
+
+    <div class="form-wrapper login-form-wrapper">
+        <div class="form-card">
+            <div class="login-head-row">
+                <h1 class="login-heading">SIGN IN</h1>
+                <a href="{{ url_for('home') }}" class="login-skip">Skip</a>
+            </div>
+
+            {% if error %}
+                <p class="form-error">{{ error }}</p>
+            {% endif %}
+
+            <form action="{{ url_for('login', next=request.args.get('next')) }}" method="POST">
+                <div class="login-fields-group">
+                    <p class="login-signup-line">NEW HERE? <a href="{{ url_for('register', next=request.args.get('next')) }}">SIGN UP</a></p>
+                    <input type="email" name="email" placeholder="name@domain.com" id="Email" required autocomplete="email">
+                    <input type="password" name="password" placeholder="•••••••••" id="Password" required>
+                    <div class="form-links">
+                        <a href="{{ url_for('forgot_password') }}">FORGOT PASSWORD</a>
+                        <a href="{{ url_for('login_google', next=request.args.get('next')) }}">SIGN IN GOOGLE</a>
+                    </div>
+                </div>
+                <button type="submit">SUBMIT</button>
+            </form>        
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}

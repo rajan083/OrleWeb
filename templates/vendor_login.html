@@ -1,15 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Vendor Sign In{% endblock %}
 {% block content %}
-<div class="form-wrapper">
-    <div class="form-card">
-        <p>New vendor? <a href="{{ url_for('vendor_register') }}">Register your business</a></p>
-        <form action="{{ url_for('vendor_login') }}" method="POST">
-            <input type="email" name="email" placeholder="business@email.com" required>
-            <input type="password" name="password" placeholder="••••••••••" required>
-            <button type="submit">Sign In</button>
-        </form>
-        <p><a href="{{ url_for('vendor_forgot_password') }}" class="text-link">Forgot password?</a></p>
+
+<div class="login-split">
+
+    <div class="login-image-pane">
+        <div class="login-image-ken-burns" style="background-image: url('{{ hero_image_url }}');"></div>
+        <div class="login-image-scrim"></div>
+        {% if hero_product_name %}
+        <div class="login-image-caption">
+            <span class="login-image-eyebrow">From the edit</span>
+            <span class="login-image-product">{{ hero_product_name }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="form-wrapper login-form-wrapper">
+        <div class="form-card">
+            <div class="login-head-row">
+                <h1 class="login-heading">VENDOR SIGN IN</h1>
+                <a href="{{ url_for('home') }}" class="login-skip">Skip</a>
+            </div>
+
+            <form action="{{ url_for('vendor_login') }}" method="POST">
+                <div class="login-fields-group">
+                    <p class="login-signup-line">NEW VENDOR? <a href="{{ url_for('vendor_register') }}">REGISTER YOUR BUSINESS</a></p>
+                    <input type="email" name="email" placeholder="business@email.com" required>
+                    <input type="password" name="password" placeholder="••••••••••" required>
+                    <div class="form-links">
+                        <a href="{{ url_for('vendor_forgot_password') }}">FORGOT PASSWORD</a>
+                    </div>                
+                </div>
+                <button type="submit">Sign In</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

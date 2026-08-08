@@ -85,6 +85,7 @@ serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
 
 
+
 def send_email(to, subject, body):
     """Sends a plain-text email via Resend's HTTPS API. Failures are logged but never crash the calling request."""
     try:
@@ -198,12 +199,24 @@ def load_user(user_id):
     return None
 
 
+def get_hero_product():
+    """Picks a random active product with an image, for the split-screen auth pages."""
+    hero_product = (
+        Product.query
+        .filter(Product.is_active == True, Product.image_url.isnot(None))
+        .order_by(db.func.random())
+        .first()
+    )
+    hero_image_url = product_image(hero_product.image_url) if hero_product else url_for('static', filename='img/placeholder.png')
+    hero_product_name = hero_product.name if hero_product else None
+    return hero_image_url, hero_product_name
+
+
 def allowed_file(filename):
     return (
         "." in filename and
         filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
-
 
 def safe_int(value, default=None, min_value=None, max_value=None):
     """Parses a form value as int, returning `default` (not raising) on bad input."""
@@ -252,7 +265,8 @@ def ratelimit_handler(e):
 @limiter.limit("5 per hour", methods=["POST"])
 def register():
     if request.method == 'GET':
-        return render_template('register.html')
+        hero_image_url, hero_product_name = get_hero_product()
+        return render_template('register.html', hero_image_url=hero_image_url, hero_product_name=hero_product_name)
 
     name = request.form.get('name')
     phone_number = request.form.get('phone_number')
@@ -337,9 +351,23 @@ def verify_vendor_email(token):
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute", methods=["POST"])
 def login():
+    
     if request.method == 'GET':
-        return render_template('login.html')
-
+        hero_product = (
+            Product.query
+            .filter(Product.is_active == True, Product.image_url.isnot(None))
+            .order_by(db.func.random())
+            .first()
+        )
+        hero_image_url = product_image(hero_product.image_url) if hero_product else url_for('static', filename='img/placeholder.png')
+        hero_product_name = hero_product.name if hero_product else None
+ 
+        return render_template(
+            'login.html',
+            hero_image_url=hero_image_url,
+            hero_product_name=hero_product_name
+        )
+        
     email = request.form.get('email')
     password = request.form.get('password')
 
@@ -1339,7 +1367,8 @@ def delete_account():
 @limiter.limit("5 per hour", methods=["POST"])
 def vendor_register():
     if request.method == 'GET':
-        return render_template('vendor_register.html')
+        hero_image_url, hero_product_name = get_hero_product()
+        return render_template('vendor_register.html', hero_image_url=hero_image_url, hero_product_name=hero_product_name)
 
     business_name = request.form.get('business_name')
     email = request.form.get('email')
@@ -1373,7 +1402,8 @@ def vendor_register():
 @limiter.limit("10 per minute", methods=["POST"])
 def vendor_login():
     if request.method == 'GET':
-        return render_template('vendor_login.html')
+        hero_image_url, hero_product_name = get_hero_product()
+        return render_template('vendor_login.html', hero_image_url=hero_image_url, hero_product_name=hero_product_name)
 
     email = request.form.get('email')
     password = request.form.get('password')
@@ -2152,7 +2182,9 @@ def payment_verify():
 @limiter.limit("5 per minute", methods=["POST"])
 def admin_login():
     if request.method == 'GET':
-        return render_template('admin_login.html')
+        hero_image_url, hero_product_name = get_hero_product()
+        return render_template('admin_login.html', hero_image_url=hero_image_url, hero_product_name=hero_product_name)
+
 
     email = request.form.get('email')
     password = request.form.get('password')
