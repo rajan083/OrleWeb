@@ -1863,6 +1863,11 @@ footer {
     height: 22px;
 }
 
+.prefs-modal .body-type-card img,
+.prefs-modal .body-type-card svg {
+    height: 70px;
+}
+
 .prefs-modal .swatch-row { gap: 12px; }
 
 .prefs-modal .form-error { margin-bottom: 14px; }
@@ -3303,4 +3308,12 @@ footer {
     .product-grid {
         gap: 8px;
     }
+}
+
+.body-type-card img,
+.body-type-card svg {
+    width: 100%;
+    height: 90px;
+    object-fit: contain;
+    display: block;
 }
