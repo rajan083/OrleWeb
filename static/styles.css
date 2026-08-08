@@ -3561,3 +3561,11 @@ footer {
 .search-bar-icon-toggle {
     display: inline-flex;
 }
+
+@media (max-width: 900px) {
+    .search-bar-icon-toggle {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+}
