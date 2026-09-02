@@ -1559,6 +1559,12 @@ def product_image(image_url):
     return url_for('static', filename=image_url)
 
 
+SIZE_ORDER = {size: i for i, size in enumerate(SIZE_CHOICES)}
+
+@app.template_filter('sorted_sizes')
+def sorted_sizes(sizes):
+    return sorted(sizes, key=lambda s: SIZE_ORDER.get(s.size, len(SIZE_CHOICES)))
+
 @app.route('/vendor/products/<int:product_id>/edit', methods=['GET', 'POST'])
 @vendor_required
 def vendor_edit_product(product_id):
@@ -2619,9 +2625,9 @@ def admin_approve_return(return_id):
 
     ret.resolved_by_id = current_user.id
     success, message = process_return_refund(ret)
-    db.session.commit()
 
     if success:
+        db.session.commit()    
         send_return_email(ret, 'refunded')
         flash(f"Return #{ret.id} approved. {message}", "success")
     else:

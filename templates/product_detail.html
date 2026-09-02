@@ -76,7 +76,7 @@
                     <div class="pd-size-select">
                         <label class="fit-note-label">Select Size</label>
                         <div class="pd-size-options">
-                            {% for size in product.sizes|sort(attribute='size') %}
+                            {% for size in product.sizes|sorted_sizes %}
                                 <label class="pd-size-pill {{ 'out-of-stock' if size.stock_quantity <= 0 else '' }}">
                                     <input type="radio" name="size" value="{{ size.size }}"
                                         data-stock="{{ size.stock_quantity }}"
