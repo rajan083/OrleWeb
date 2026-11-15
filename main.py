@@ -1,5 +1,4 @@
-import os
-import uuid
+import os, re, io, uuid, razorpay, click, hmac, hashlib, json, requests
 from flask import Flask, request, render_template, redirect, url_for, session, flash, abort
 from sqlalchemy import or_
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -12,24 +11,15 @@ from flask_migrate import Migrate
 from authlib.integrations.flask_client import OAuth
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from recommendations import recommend_products
-import razorpay
-import click
-import hmac
-import hashlib
-import json
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from PIL import Image, UnidentifiedImageError
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-import io
 import cloudinary
 import cloudinary.uploader
-import requests
 from werkzeug.middleware.proxy_fix import ProxyFix
-import re
-
 
 app = Flask(__name__)
 Config.validate()

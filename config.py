@@ -1,5 +1,4 @@
-import os
-import sys
+import os, sys
 from dotenv import load_dotenv
 
 load_dotenv()
